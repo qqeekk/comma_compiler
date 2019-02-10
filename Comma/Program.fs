@@ -33,8 +33,13 @@ let iterateTokens callback lexbuf =
 
 
 let compileFromLexbuf lexbuf =
-    let inline print (p : Position) tok =
-        Debug.Print (sprintf "token %A: %A\n" (p.Line + 1, p.Column) tok)
+    use file = File.CreateText "lex.output.txt"
+
+    let print (p : Position) tok =
+        let str = sprintf "token %A: %A\n" (p.Line + 1, p.Column) tok
+        
+        do Debug.Print str
+        do file.WriteLine str
 
     do iterateTokens print lexbuf
 
