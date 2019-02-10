@@ -9,16 +9,20 @@ open Comma.Errors
 open Parser
 
 let position (pos : Microsoft.FSharp.Text.Lexing.Position) = pos.Line + 1, pos.Column
+
 let endPos (lexbuf: LexBuffer<_>) = position (lexbuf.EndPos)
+
 let startPos (lexbuf: LexBuffer<_>) = position (lexbuf.StartPos)
+
 let lexeme (lexbuf:LexBuffer<_>) = Encoding.UTF8.GetString(lexbuf.Lexeme)
+
 let setNextLine (lexbuf:LexBuffer<_>) = lexbuf.EndPos <- lexbuf.EndPos.NextLine
 
-let error printTok (lexbuf:LexBuffer<_>) msg = 
+let error printTok (lexbuf:LexBuffer<_>) = 
     if printTok then
-        logLexErrorWithToken (endPos lexbuf) (lexeme lexbuf) msg
+        logLexErrorWithToken (endPos lexbuf) (lexeme lexbuf)
     else 
-        logLexError (startPos lexbuf) (endPos lexbuf) msg
+        logLexError (startPos lexbuf) (endPos lexbuf)
 
 let int32 (lexbuf:LexBuffer<_>) onError =
     try LitInt (int (lexeme lexbuf))

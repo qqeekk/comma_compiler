@@ -3,6 +3,7 @@ open System.Text
 open System.IO
 open System.Diagnostics
 open Parser
+open System
 
 let fileExtensions = [| ".cmm" |]
 let encoding = Encoding.UTF8
@@ -23,7 +24,7 @@ let safeOpenFile filename : Result<FileStream, string> =
 
 
 let iterateTokens callback lexbuf =
-    // needs to be tail-recursive
+    // tail-recursive
     let rec loop () =
         match Lexer.tokenize lexbuf with 
         | Eof -> () 
@@ -36,12 +37,13 @@ let compileFromLexbuf lexbuf =
     use file = File.CreateText "lex.output.txt"
 
     let print (p : Position) tok =
-        let str = sprintf "token %A: %A\n" (p.Line + 1, p.Column) tok
+        let str = sprintf "token %A: %A%s" (p.Line + 1, p.Column) tok Environment.NewLine
         
         do Debug.Print str
-        do file.WriteLine str
+        do file.Write str
 
     do iterateTokens print lexbuf
+
 
 let compileText (text: string) =
     LexBuffer<_>.FromBytes (encoding.GetBytes text) |> compileFromLexbuf
