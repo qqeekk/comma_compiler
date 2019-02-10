@@ -263,3 +263,4 @@ __pycache__/
 **/Parser.fsi
 **/Parser.fs
 **/Lexer.fs
+**/Properties/launchSettings.json

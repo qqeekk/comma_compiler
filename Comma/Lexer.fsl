@@ -1,0 +1,101 @@
+﻿{
+module Lexer
+
+open System
+open System.Text
+open Microsoft.FSharp.Text.Lexing
+open Comma.ErrorLogger
+open Comma.Errors
+open Parser
+
+let position (pos : Microsoft.FSharp.Text.Lexing.Position) = pos.Line + 1, pos.Column
+let endPos (lexbuf: LexBuffer<_>) = position (lexbuf.EndPos)
+let startPos (lexbuf: LexBuffer<_>) = position (lexbuf.StartPos)
+let lexeme (lexbuf:LexBuffer<_>) = Encoding.UTF8.GetString(lexbuf.Lexeme)
+let setNextLine (lexbuf:LexBuffer<_>) = lexbuf.EndPos <- lexbuf.EndPos.NextLine
+
+let error printTok (lexbuf:LexBuffer<_>) msg = 
+    if printTok then
+        logLexErrorWithToken (endPos lexbuf) (lexeme lexbuf) msg
+    else 
+        logLexError (startPos lexbuf) (endPos lexbuf) msg
+
+let int32 (lexbuf:LexBuffer<_>) onError =
+    try LitInt (int (lexeme lexbuf))
+    with _ -> error false lexbuf integerOverflow; onError lexbuf
+
+let float (lexbuf:LexBuffer<_>) onError =
+    try LitFloat (float (lexeme lexbuf))
+    with _ -> error false lexbuf invalidFloat; onError lexbuf
+}
+
+let digit = ['0'-'9']
+let alpha = ['a'-'z' 'A'-'Z']
+let whitespace = [' ' '\t']
+let newline = ('\n' | '\r' '\n' )
+let float = ['-']?digit+('.'digit+)?(['e''E']digit+)?
+
+rule tokenize = parse
+| "//"						{ singleLineComment lexbuf }	
+| newline			        { setNextLine lexbuf; tokenize lexbuf }
+| whitespace				{ tokenize lexbuf }
+| '"' [^'"']* eof			{ error false lexbuf unmatchedDoubleQuote; Eof }
+| '"' [^'"']* '"'			{ LitString (let s = lexeme lexbuf in s.[1 .. s.Length - 2]) }
+| ['-']?digit+				{ int32 lexbuf tokenize }
+| float						{ float lexbuf tokenize }
+| "true"					{ LitBool true}
+| "false"					{ LitBool false}
+| '+'						{ Plus }
+| '-'						{ Minus }
+| '*'						{ Asterisk }
+| '/'						{ LSlash }
+| '='						{ Eq }
+| '>'						{ Greater }
+| '<'						{ Less }
+| ">="						{ GreaterEq }
+| "<="						{ LessEq }
+| "=="						{ EqEq }
+| "!="						{ BangEq }
+| "&&"						{ AmpAmp }
+| "||"						{ BarBar }
+| '!'						{ Bang }
+| '('						{ LParen }
+| ')'						{ RParen }
+| '{'						{ LBrace }
+| '}'						{ RBrace }
+| '['						{ LBrack }
+| ']'						{ RBrack }
+| ';'						{ Semicolon }
+| ':'						{ Colon }
+| "->"						{ RArrow }
+| '.'						{ Dot }
+| ','						{ Comma }
+| "while"					{ While }
+| "do"						{ Do }
+| "goto"					{ GoTo }
+| "brake"					{ Brake }
+| "continue"				{ Continue }
+| "if"						{ If }
+| "else"					{ Else }
+| "func"					{ Func }
+| "return"					{ Return }
+| "var"						{ Var }
+| "struct"					{ Struct }
+
+// todo: make as common identifiers?
+| "Int"						{ Int }
+| "Float"					{ Float }
+| "String"					{ String }
+| "Bool"					{ Bool }
+| "in"						{ InFunc }
+| "out"						{ OutFunc }
+// end of todo
+
+| alpha (alpha | digit)*	{ Id (lexeme lexbuf) }
+| eof						{ Eof }
+| _							{ error true lexbuf unknownIdentifier; tokenize lexbuf }
+
+and singleLineComment = parse
+| newline					{ setNextLine lexbuf; tokenize lexbuf }
+| eof						{ Eof }
+| _							{ singleLineComment lexbuf }

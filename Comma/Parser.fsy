@@ -1,0 +1,25 @@
+﻿// This is an empty parser. 
+%{
+
+%}
+
+%start parse
+
+// Token definitions
+%token <string> Id
+%token <string> LitString
+%token <int> LitInt
+%token <float> LitFloat
+%token <bool> LitBool
+%token Plus Minus Asterisk LSlash Eq Greater Less GreaterEq LessEq EqEq BangEq
+%token AmpAmp BarBar Bang LParen RParen LBrace RBrace LBrack RBrack Semicolon Colon RArrow Dot Comma 
+%token While Do GoTo Brake Continue If Else Func Return Var Struct
+%token Int Float String Bool InFunc OutFunc
+%token Eof
+%type <string> parse
+
+%%
+parse: 
+	| {"TODO"}
+
+%%
