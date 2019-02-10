@@ -8,7 +8,7 @@ open Comma.ErrorLogger
 open Comma.Errors
 open Parser
 
-let position (pos : Microsoft.FSharp.Text.Lexing.Position) = pos.Line + 1, pos.Column
+let private position (pos : Microsoft.FSharp.Text.Lexing.Position) = pos.Line + 1, pos.Column
 
 let endPos (lexbuf: LexBuffer<_>) = position (lexbuf.EndPos)
 
@@ -18,35 +18,34 @@ let lexeme (lexbuf:LexBuffer<_>) = Encoding.UTF8.GetString(lexbuf.Lexeme)
 
 let setNextLine (lexbuf:LexBuffer<_>) = lexbuf.EndPos <- lexbuf.EndPos.NextLine
 
-let error printTok (lexbuf:LexBuffer<_>) = 
-    if printTok then
-        logLexErrorWithToken (endPos lexbuf) (lexeme lexbuf)
-    else 
-        logLexError (startPos lexbuf) (endPos lexbuf)
+let getErrorInfo (lexbuf:LexBuffer<_>) = errorInfo (startPos lexbuf) (endPos lexbuf)
 
 let int32 (lexbuf:LexBuffer<_>) onError =
     try LitInt (int (lexeme lexbuf))
-    with _ -> error false lexbuf integerOverflow; onError lexbuf
+    with _ -> onError (getErrorInfo lexbuf integerOverflow)
 
 let float (lexbuf:LexBuffer<_>) onError =
     try LitFloat (float (lexeme lexbuf))
-    with _ -> error false lexbuf invalidFloat; onError lexbuf
+    with _ -> onError (getErrorInfo lexbuf invalidFloat)
+
+let logErrorAndMove parse logger (lexbuf:LexBuffer<_>) e =
+    logger.error e; parse logger lexbuf
 }
+
 
 let digit = ['0'-'9']
 let alpha = ['a'-'z' 'A'-'Z']
 let whitespace = [' ' '\t']
-let newline = ('\n' | '\r' '\n' )
+let newline = ('\n' | '\r' '\n')
 let float = digit+('.'digit+)?(['e''E']digit+)?
 
-rule tokenize = parse
-| "//"						{ singleLineComment lexbuf }	
-| newline			        { setNextLine lexbuf; tokenize lexbuf }
-| whitespace				{ tokenize lexbuf }
-| '"' [^'"']* eof			{ error false lexbuf unmatchedDoubleQuote; Eof }
-| '"' [^'"']* '"'			{ LitString (let s = lexeme lexbuf in s.[1 .. s.Length - 2]) }
-| digit+					{ int32 lexbuf tokenize }
-| float						{ float lexbuf tokenize }
+rule tokenize logger = parse
+| "//"						{ singleLineComment logger lexbuf }	
+| newline			        { setNextLine lexbuf; tokenize logger lexbuf }
+| whitespace				{ tokenize logger lexbuf }
+| '"'                       { string logger (endPos lexbuf) (new System.Text.StringBuilder()) lexbuf }
+| digit+					{ int32 lexbuf (logErrorAndMove tokenize logger lexbuf) }
+| float						{ float lexbuf (logErrorAndMove tokenize logger lexbuf) }
 | "true"					{ LitBool true}
 | "false"					{ LitBool false}
 | '+'						{ Plus }
@@ -95,11 +94,17 @@ rule tokenize = parse
 | "out"						{ OutFunc }
 // end of todo
 
-| alpha (alpha | digit)*	{ Id (lexeme lexbuf) }
+| (alpha | '_') (alpha | digit | '_')*      { Id (lexeme lexbuf) }
 | eof						{ Eof }
-| _							{ error true lexbuf unknownIdentifier; tokenize lexbuf }
+| _							{ logger.error (getErrorInfo lexbuf unknownIdentifier); tokenize logger lexbuf }
 
-and singleLineComment = parse
-| newline					{ setNextLine lexbuf; tokenize lexbuf }
+and singleLineComment logger = parse
+| newline					{ setNextLine lexbuf; tokenize logger lexbuf }
 | eof						{ Eof }
-| _							{ singleLineComment lexbuf }
+| _							{ singleLineComment logger lexbuf }
+
+and string logger pos state = parse
+| '"'                       { LitString (state.ToString ()) }
+| eof                       { logger.error (errorInfo pos (endPos lexbuf) unmatchedDoubleQuote); Eof }
+| newline                   { logger.error (errorInfo pos (endPos lexbuf) unmatchedDoubleQuote); setNextLine lexbuf; tokenize logger lexbuf }
+| _                         { string logger pos (state.Append (lexeme lexbuf)) lexbuf}

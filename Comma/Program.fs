@@ -4,6 +4,7 @@ open System.IO
 open System.Diagnostics
 open Parser
 open System
+open Comma.ErrorLogger
 
 let fileExtensions = [| ".cmm" |]
 let encoding = Encoding.UTF8
@@ -26,14 +27,14 @@ let safeOpenFile filename : Result<FileStream, string> =
 let iterateTokens callback lexbuf =
     // tail-recursive
     let rec loop () =
-        match Lexer.tokenize lexbuf with 
+        match Lexer.tokenize consoleLogger lexbuf with 
         | Eof -> () 
         | x -> do callback lexbuf.EndPos x; loop ()
     
     do loop ()
 
 
-let compileFromLexbuf lexbuf =
+let compileFromLexbuf (lexbuf:LexBuffer<_>) =
     use file = File.CreateText "lex.output.txt"
 
     let print (p : Position) tok =

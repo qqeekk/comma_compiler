@@ -1,8 +1,10 @@
 ﻿namespace Comma
 
 module Errors =
+    type Position = int * int
+
     type ErrorMessage = | ErrorMessage of string
-    type WarningMessage = | WarningMessage of string
+    type ErrorInfo = | ErrorInfo of string
 
     let integerOverflow = 
         ErrorMessage "This number is outside the allowable range for 32-bit signed integers"
@@ -16,14 +18,20 @@ module Errors =
     let unmatchedDoubleQuote = 
         ErrorMessage "Unmatched '\"'"
 
+    let errorInfo (startPos: Position) (endPos: Position) (ErrorMessage msg) =
+        let stringify nth = 
+            let a, b = nth startPos, nth endPos
+            if a = b then string a else sprintf "%d-%d" a b
+
+        ErrorInfo <| sprintf "Error at (%s, %s): %s" (stringify fst) (stringify snd) msg
+
 module ErrorLogger =
     open System
     open Errors
 
-    type Position = int * int
+    type Logger = { error : ErrorInfo -> unit }
 
     let errorColor = ConsoleColor.Red
-    let warningColor = ConsoleColor.Yellow
     
     let printWithColor color (msg : string) =
         let curColor = Console.ForegroundColor
@@ -31,15 +39,5 @@ module ErrorLogger =
         Console.WriteLine msg
         Console.ForegroundColor <- curColor
 
-    let logLexErrorWithToken (pos: Position) (tok: string) (ErrorMessage msg) = 
-        printWithColor errorColor (sprintf "Lexing error at %A : %s %A" pos msg tok)
-
-    let logLexError (startPos: Position) (endPos: Position) (ErrorMessage msg) = 
-        printWithColor errorColor (sprintf "Lexing error at %A - %A : %s" startPos endPos msg)
-
-    let logLexWarningWithToken (pos: Position) (tok: string) (WarningMessage msg) =
-        printWithColor warningColor (sprintf "Lexing warning at %A : %s %A" pos msg tok)
-        
-    let logLexWarning (startPos: Position) (endPos: Position) (WarningMessage msg) =
-        printWithColor warningColor (sprintf "Lexing warning at %A - %A : %s" startPos endPos msg)
-
+    let consoleLogger = { error = fun (ErrorInfo msg) -> printWithColor errorColor msg }
+   

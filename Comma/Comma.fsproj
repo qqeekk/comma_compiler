@@ -6,6 +6,10 @@
     <NoWarn>NU1701</NoWarn>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <FsYacc Include="Parser.fsy">
       <OtherFlags>--module Parser</OtherFlags>
