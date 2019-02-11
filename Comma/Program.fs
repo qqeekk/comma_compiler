@@ -1,10 +1,10 @@
 ﻿open Microsoft.FSharp.Text.Lexing
 open System.Text
 open System.IO
-open System.Diagnostics
 open Parser
-open System
 open Comma.ErrorLogger
+open Comma
+open System
 
 let fileExtensions = [| ".cmm" |]
 let encoding = Encoding.UTF8
@@ -24,31 +24,33 @@ let safeOpenFile filename : Result<FileStream, string> =
         Error ("File does not exist: " + filename)
 
 
-let iterateTokens callback lexbuf =
+let iterateTokens callback logger lexbuf =
     // tail-recursive
     let rec loop () =
-        match Lexer.tokenize consoleLogger lexbuf with 
+        match Lexer.tokenize logger lexbuf with 
         | Eof -> () 
-        | x -> do callback lexbuf.EndPos x; loop ()
-    
+        | x -> do callback lexbuf.StartPos lexbuf.EndPos x; loop ()
+
     do loop ()
 
 
 let compileFromLexbuf (lexbuf:LexBuffer<_>) =
     use file = File.CreateText "lex.output.txt"
+    let logger = (consoleLogger >=> (*debugLogger >=> *) fileLogger file)
 
-    let print (p : Position) tok =
-        let str = sprintf "token %A: %A%s" (p.Line + 1, p.Column) tok Environment.NewLine
-        
-        do Debug.Print str
-        do file.Write str
+    let print (startPos : Position) (endPos : Position) tok =
+        let startPos = startPos.Line + 1, startPos.Column
+        let endPos = endPos.Line + 1, endPos.Column
+        let str = sprintf "token %A" tok
 
-    do iterateTokens print lexbuf
+        logger.log (Errors.messageInfo startPos endPos (Errors.InfoMessage str))
+
+    do iterateTokens print logger lexbuf
 
 
 let compileText (text: string) =
     LexBuffer<_>.FromBytes (encoding.GetBytes text) |> compileFromLexbuf
-    
+
 
 let compileFile filename =
     match (safeOpenFile filename) with

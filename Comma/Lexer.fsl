@@ -18,18 +18,18 @@ let lexeme (lexbuf:LexBuffer<_>) = Encoding.UTF8.GetString(lexbuf.Lexeme)
 
 let setNextLine (lexbuf:LexBuffer<_>) = lexbuf.EndPos <- lexbuf.EndPos.NextLine
 
-let getErrorInfo (lexbuf:LexBuffer<_>) = errorInfo (startPos lexbuf) (endPos lexbuf)
+let getMessageInfo (lexbuf:LexBuffer<_>) = messageInfo (startPos lexbuf) (endPos lexbuf)
 
 let int32 (lexbuf:LexBuffer<_>) onError =
     try LitInt (int (lexeme lexbuf))
-    with _ -> onError (getErrorInfo lexbuf integerOverflow)
+    with _ -> onError (getMessageInfo lexbuf integerOverflow)
 
 let float (lexbuf:LexBuffer<_>) onError =
     try LitFloat (float (lexeme lexbuf))
-    with _ -> onError (getErrorInfo lexbuf invalidFloat)
+    with _ -> onError (getMessageInfo lexbuf invalidFloat)
 
-let logErrorAndMove parse logger (lexbuf:LexBuffer<_>) e =
-    logger.error e; parse logger lexbuf
+let logMessageAndMove parse logger (lexbuf:LexBuffer<_>) e =
+    logger.log e; parse logger lexbuf
 }
 
 
@@ -44,8 +44,8 @@ rule tokenize logger = parse
 | newline			        { setNextLine lexbuf; tokenize logger lexbuf }
 | whitespace				{ tokenize logger lexbuf }
 | '"'                       { string logger (endPos lexbuf) (new System.Text.StringBuilder()) lexbuf }
-| digit+					{ int32 lexbuf (logErrorAndMove tokenize logger lexbuf) }
-| float						{ float lexbuf (logErrorAndMove tokenize logger lexbuf) }
+| digit+					{ int32 lexbuf (logMessageAndMove tokenize logger lexbuf) }
+| float						{ float lexbuf (logMessageAndMove tokenize logger lexbuf) }
 | "true"					{ LitBool true}
 | "false"					{ LitBool false}
 | '+'						{ Plus }
@@ -84,19 +84,9 @@ rule tokenize logger = parse
 | "return"					{ Return }
 | "var"						{ Var }
 | "struct"					{ Struct }
-
-// todo: make as common identifiers?
-| "Int"						{ Int }
-| "Float"					{ Float }
-| "String"					{ String }
-| "Bool"					{ Bool }
-| "in"						{ InFunc }
-| "out"						{ OutFunc }
-// end of todo
-
 | (alpha | '_') (alpha | digit | '_')*      { Id (lexeme lexbuf) }
 | eof						{ Eof }
-| _							{ logger.error (getErrorInfo lexbuf unknownIdentifier); tokenize logger lexbuf }
+| _							{ logger.log (getMessageInfo lexbuf unknownIdentifier); tokenize logger lexbuf }
 
 and singleLineComment logger = parse
 | newline					{ setNextLine lexbuf; tokenize logger lexbuf }
@@ -105,6 +95,6 @@ and singleLineComment logger = parse
 
 and string logger pos state = parse
 | '"'                       { LitString (state.ToString ()) }
-| eof                       { logger.error (errorInfo pos (endPos lexbuf) unmatchedDoubleQuote); Eof }
-| newline                   { logger.error (errorInfo pos (endPos lexbuf) unmatchedDoubleQuote); setNextLine lexbuf; tokenize logger lexbuf }
+| eof                       { logger.log (messageInfo pos (endPos lexbuf) unmatchedDoubleQuote); Eof }
+| newline                   { logger.log (messageInfo pos (endPos lexbuf) unmatchedDoubleQuote); setNextLine lexbuf; tokenize logger lexbuf }
 | _                         { string logger pos (state.Append (lexeme lexbuf)) lexbuf}

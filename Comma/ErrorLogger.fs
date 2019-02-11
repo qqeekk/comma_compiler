@@ -3,8 +3,8 @@
 module Errors =
     type Position = int * int
 
-    type ErrorMessage = | ErrorMessage of string
-    type ErrorInfo = | ErrorInfo of string
+    type Message = | ErrorMessage of string | InfoMessage of string
+    type MessageInfo = | Error of string | Info of string
 
     let integerOverflow = 
         ErrorMessage "This number is outside the allowable range for 32-bit signed integers"
@@ -17,19 +17,26 @@ module Errors =
 
     let unmatchedDoubleQuote = 
         ErrorMessage "Unmatched '\"'"
-
-    let errorInfo (startPos: Position) (endPos: Position) (ErrorMessage msg) =
+    
+    let private getPositionRange (startPos: Position) (endPos: Position) =
         let stringify nth = 
             let a, b = nth startPos, nth endPos
             if a = b then string a else sprintf "%d-%d" a b
+        
+        sprintf "(%s, %s)" (stringify fst) (stringify snd)
 
-        ErrorInfo <| sprintf "Error at (%s, %s): %s" (stringify fst) (stringify snd) msg
+    let messageInfo (startPos: Position) (endPos: Position) = function
+        | ErrorMessage msg -> Error (sprintf "Error at %s: %s" (getPositionRange startPos endPos) msg)
+        | InfoMessage msg -> Info (sprintf "Info at %s: %s" (getPositionRange startPos endPos) msg)
 
 module ErrorLogger =
     open System
     open Errors
+    open System.Diagnostics
+    open System.IO
 
-    type Logger = { error : ErrorInfo -> unit }
+    type Logger = { log : MessageInfo -> unit }
+    let (>=>) logger1 logger2 = {log = fun e -> logger1.log e; logger2.log e}
 
     let errorColor = ConsoleColor.Red
     
@@ -39,5 +46,14 @@ module ErrorLogger =
         Console.WriteLine msg
         Console.ForegroundColor <- curColor
 
-    let consoleLogger = { error = fun (ErrorInfo msg) -> printWithColor errorColor msg }
+    let consoleLogger = { log = function | Error msg -> printWithColor errorColor msg 
+                                         | Info msg -> 
+                                            #if DEBUG 
+                                                            printfn "%s" msg 
+                                            #else 
+                                                            ()
+                                            #endif
+    }
+    let debugLogger =   { log = function | Error msg | Info msg -> Debug.Print msg }
+    let fileLogger (file:TextWriter) = { log = function | Error msg | Info msg -> file.WriteLine msg }
    
