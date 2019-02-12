@@ -15,10 +15,10 @@
 %token AmpAmp BarBar Bang LParen RParen LBrace RBrace LBrack RBrack Semicolon Colon RArrow Dot Comma 
 %token While Do GoTo Break Continue If Else Func Return Var Struct
 %token Eof
-%type <string> parse
+%type <unit> parse
 
 %%
 parse: 
-	| {"TODO"}
+	| {()}
 
 %%

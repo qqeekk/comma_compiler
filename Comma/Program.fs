@@ -2,6 +2,7 @@
 open System.Text
 open System.IO
 open Parser
+open Comma.Errors
 open Comma.ErrorLogger
 open Comma
 open System
@@ -23,38 +24,39 @@ let safeOpenFile filename : Result<FileStream, string> =
     | false ->
         Error ("File does not exist: " + filename)
 
+let rec getToken logger (lexbuf: LexBuffer<_>) =
+    let lex = Lexer.tokenize lexbuf
 
-let iterateTokens callback logger lexbuf =
-    // tail-recursive
-    let rec loop () =
-        match Lexer.tokenize logger lexbuf with 
-        | Eof -> () 
-        | x -> do callback lexbuf.StartPos lexbuf.EndPos x; loop ()
+    let pos = let ep = lexbuf.EndPos in ep.Line + 1, ep.Column    
+    let logToken tok  =  info logger (sprintf "%A: %A" pos tok)
+    let logError text = error logger (sprintf "%A: %s" pos text)
+    
+    match lex with
+    | Ok tok     -> logToken tok; tok
+    | Error text -> 
+        logError text 
+        match lexbuf.IsPastEndOfStream with
+        | false -> getToken logger lexbuf
+        | true  -> logToken Eof; Eof
 
-    do loop ()
-
-
+    
 let compileFromLexbuf (lexbuf:LexBuffer<_>) =
     use file = File.CreateText "lex.output.txt"
-    let logger = (consoleLogger >=> (*debugLogger >=> *) fileLogger file)
+    let logger = (consoleLogger >=> (* debugLogger >=> *) fileLogger file)
 
-    let print (startPos : Position) (endPos : Position) tok =
-        let startPos = startPos.Line + 1, startPos.Column
-        let endPos = endPos.Line + 1, endPos.Column
-        let str = sprintf "token %A" tok
+    let rec iterate () =
+        match getToken logger lexbuf with 
+        | Eof ->         () 
+        | _   -> iterate ()
 
-        logger.log (Errors.messageInfo startPos endPos (Errors.InfoMessage str))
-
-    do iterateTokens print logger lexbuf
-
+    iterate ()
 
 let compileText (text: string) =
     LexBuffer<_>.FromBytes (encoding.GetBytes text) |> compileFromLexbuf
 
-
 let compileFile filename =
     match (safeOpenFile filename) with
-    | Ok file ->
+    | Ok file    ->
         use stream = new BinaryReader(file, encoding)
         do compileFromLexbuf (LexBuffer<_>.FromBinaryReader stream)        
     | Error text -> 
@@ -64,5 +66,5 @@ let compileFile filename =
 [<EntryPoint>]
 let main = function
     | [| "-f" ; filename |] -> compileFile filename; 0
-    | [| text |] -> compileText text; 0
-    | _ -> (); 1
+    | [| text |]            -> compileText text; 0
+    | _                     -> printfn "Wrong arguments"; 1

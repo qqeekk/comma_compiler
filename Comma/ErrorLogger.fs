@@ -1,33 +1,13 @@
 ﻿namespace Comma
+open Microsoft.FSharp.Text.Lexing
 
 module Errors =
-    type Position = int * int
+    type Message = | MError of string | MInfo of string
 
-    type Message = | ErrorMessage of string | InfoMessage of string
-    type MessageInfo = | Error of string | Info of string
-
-    let integerOverflow = 
-        ErrorMessage "This number is outside the allowable range for 32-bit signed integers"
-    
-    let unknownIdentifier = 
-        ErrorMessage "Invalid symbol or identifier"
-    
-    let invalidFloat =
-        ErrorMessage "Invalid floating point number"
-
-    let unmatchedDoubleQuote = 
-        ErrorMessage "Unmatched '\"'"
-    
-    let private getPositionRange (startPos: Position) (endPos: Position) =
-        let stringify nth = 
-            let a, b = nth startPos, nth endPos
-            if a = b then string a else sprintf "%d-%d" a b
-        
-        sprintf "(%s, %s)" (stringify fst) (stringify snd)
-
-    let messageInfo (startPos: Position) (endPos: Position) = function
-        | ErrorMessage msg -> Error (sprintf "Error at %s: %s" (getPositionRange startPos endPos) msg)
-        | InfoMessage msg -> Info (sprintf "Info at %s: %s" (getPositionRange startPos endPos) msg)
+    let integerOverflow = "This number is outside the allowable range for 32-bit signed integers"
+    let unknownIdentifier = "Invalid symbol or identifier"
+    let invalidFloat = "Invalid floating point number"
+    let unmatchedDoubleQuote = "Unmatched '\"'"
 
 module ErrorLogger =
     open System
@@ -35,25 +15,36 @@ module ErrorLogger =
     open System.Diagnostics
     open System.IO
 
-    type Logger = { log : MessageInfo -> unit }
+    type Logger = { log : Message -> unit }
+
     let (>=>) logger1 logger2 = {log = fun e -> logger1.log e; logger2.log e}
-
-    let errorColor = ConsoleColor.Red
     
-    let printWithColor color (msg : string) =
-        let curColor = Console.ForegroundColor
-        Console.ForegroundColor <- color
-        Console.WriteLine msg
-        Console.ForegroundColor <- curColor
+    let format = function 
+        | MError m -> sprintf "[Error] %s" m 
+        | MInfo m  -> sprintf "[Info] %s" m
 
-    let consoleLogger = { log = function | Error msg -> printWithColor errorColor msg 
-                                         | Info msg -> 
-                                            #if DEBUG 
-                                                            printfn "%s" msg 
-                                            #else 
-                                                            ()
-                                            #endif
-    }
-    let debugLogger =   { log = function | Error msg | Info msg -> Debug.Print msg }
-    let fileLogger (file:TextWriter) = { log = function | Error msg | Info msg -> file.WriteLine msg }
+    let inline ifDebug (value : Lazy<_>) = 
+        #if DEBUG 
+            value.Force ()
+        #else 
+            ()
+        #endif
+
+    let consoleLogger = 
+        let printWithColor color (msg : string) =
+            let curColor = Console.ForegroundColor
+            Console.ForegroundColor <- color
+            printfn "%s" msg
+            Console.ForegroundColor <- curColor
+        
+        let log = function 
+            | MError _ as e -> printWithColor ConsoleColor.Red (format e)
+            | MInfo _  as i -> ifDebug (lazy printfn "%s" (format i))
+
+        { log = log }
+
+    let debugLogger =   { log = format >> Debug.WriteLine }
+    let fileLogger (file:TextWriter) = { log = format >> file.WriteLine }
    
+    let info logger = MInfo >> logger.log
+    let error logger = MError >> logger.log

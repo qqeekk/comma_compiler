@@ -4,97 +4,88 @@ module Lexer
 open System
 open System.Text
 open Microsoft.FSharp.Text.Lexing
-open Comma.ErrorLogger
 open Comma.Errors
 open Parser
 
-let private position (pos : Microsoft.FSharp.Text.Lexing.Position) = pos.Line + 1, pos.Column
-
-let endPos (lexbuf: LexBuffer<_>) = position (lexbuf.EndPos)
-
-let startPos (lexbuf: LexBuffer<_>) = position (lexbuf.StartPos)
-
+let spos (lexbuf: LexBuffer<_>) = lexbuf.StartPos
+let epos (lexbuf: LexBuffer<_>) = lexbuf.EndPos
 let lexeme (lexbuf:LexBuffer<_>) = Encoding.UTF8.GetString(lexbuf.Lexeme)
-
 let setNextLine (lexbuf:LexBuffer<_>) = lexbuf.EndPos <- lexbuf.EndPos.NextLine
 
-let getMessageInfo (lexbuf:LexBuffer<_>) = messageInfo (startPos lexbuf) (endPos lexbuf)
+let tryInt32 lexeme =
+    try Ok (LitInt (int lexeme))
+    with _ -> Error integerOverflow
 
-let int32 (lexbuf:LexBuffer<_>) onError =
-    try LitInt (int (lexeme lexbuf))
-    with _ -> onError (getMessageInfo lexbuf integerOverflow)
-
-let float (lexbuf:LexBuffer<_>) onError =
-    try LitFloat (float (lexeme lexbuf))
-    with _ -> onError (getMessageInfo lexbuf invalidFloat)
-
-let logMessageAndMove parse logger (lexbuf:LexBuffer<_>) e =
-    logger.log e; parse logger lexbuf
+let tryFloat lexeme =
+    try Ok (LitFloat (float lexeme))
+    with _ -> Error invalidFloat
 }
-
 
 let digit = ['0'-'9']
 let alpha = ['a'-'z' 'A'-'Z']
 let whitespace = [' ' '\t']
 let newline = ('\n' | '\r' '\n')
-let float = digit+('.'digit+)?(['e''E']digit+)?
+let scientific = ['e''E']['+''-']? digit+
+let fixed = '.' digit+
+let float = digit+ (fixed | scientific | fixed scientific)
+let id = ['_']* alpha (alpha | digit | '_')*
 
-rule tokenize logger = parse
-| "//"						{ singleLineComment logger lexbuf }	
-| newline			        { setNextLine lexbuf; tokenize logger lexbuf }
-| whitespace				{ tokenize logger lexbuf }
-| '"'                       { string logger (endPos lexbuf) (new System.Text.StringBuilder()) lexbuf }
-| digit+					{ int32 lexbuf (logMessageAndMove tokenize logger lexbuf) }
-| float						{ float lexbuf (logMessageAndMove tokenize logger lexbuf) }
-| "true"					{ LitBool true}
-| "false"					{ LitBool false}
-| '+'						{ Plus }
-| '-'						{ Minus }
-| '*'						{ Asterisk }
-| '/'						{ LSlash }
-| '='						{ Eq }
-| '>'						{ Greater }
-| '<'						{ Less }
-| ">="						{ GreaterEq }
-| "<="						{ LessEq }
-| "=="						{ EqEq }
-| "!="						{ BangEq }
-| "&&"						{ AmpAmp }
-| "||"						{ BarBar }
-| '!'						{ Bang }
-| '('						{ LParen }
-| ')'						{ RParen }
-| '{'						{ LBrace }
-| '}'						{ RBrace }
-| '['						{ LBrack }
-| ']'						{ RBrack }
-| ';'						{ Semicolon }
-| ':'						{ Colon }
-| "->"						{ RArrow }
-| '.'						{ Dot }
-| ','						{ Comma }
-| "while"					{ While }
-| "do"						{ Do }
-| "goto"					{ GoTo }
-| "break"					{ Break }
-| "continue"				{ Continue }
-| "if"						{ If }
-| "else"					{ Else }
-| "func"					{ Func }
-| "return"					{ Return }
-| "var"						{ Var }
-| "struct"					{ Struct }
-| (alpha | '_') (alpha | digit | '_')*      { Id (lexeme lexbuf) }
-| eof						{ Eof }
-| _							{ logger.log (getMessageInfo lexbuf unknownIdentifier); tokenize logger lexbuf }
+rule tokenize = parse
+| "//"                      { singleLineComment lexbuf }	
+| newline                   { setNextLine lexbuf; tokenize lexbuf }
+| whitespace                { tokenize lexbuf }
+| '"'                       { singleLineString (epos lexbuf) (new StringBuilder()) lexbuf }
+| digit+                    { tryInt32 (lexeme lexbuf) }
+| float                     { tryFloat (lexeme lexbuf) }
+| "true"                    { Ok (LitBool true) }
+| "false"                   { Ok (LitBool false) }
+| '+'                       { Ok Plus }
+| '-'                       { Ok Minus }
+| '*'                       { Ok Asterisk }
+| '/'                       { Ok LSlash }
+| '='                       { Ok Eq }
+| '>'                       { Ok Greater }
+| '<'                       { Ok Less }
+| ">="                      { Ok GreaterEq }
+| "<="                      { Ok LessEq }
+| "=="                      { Ok EqEq }
+| "!="                      { Ok BangEq }
+| "&&"                      { Ok AmpAmp }
+| "||"                      { Ok BarBar }
+| '!'                       { Ok Bang }
+| '('                       { Ok LParen }
+| ')'                       { Ok RParen }
+| '{'                       { Ok LBrace }
+| '}'                       { Ok RBrace }
+| '['                       { Ok LBrack }
+| ']'                       { Ok RBrack }
+| ';'                       { Ok Semicolon }
+| ':'                       { Ok Colon }
+| "->"                      { Ok RArrow }
+| '.'                       { Ok Dot }
+| ','                       { Ok Comma }
+| "while"                   { Ok While }
+| "do"                      { Ok Do }
+| "goto"                    { Ok GoTo }
+| "break"                   { Ok Break }
+| "continue"                { Ok Continue }
+| "if"                      { Ok If }
+| "else"                    { Ok Else }
+| "func"                    { Ok Func }
+| "return"                  { Ok Return }
+| "var"                     { Ok Var }
+| "struct"                  { Ok Struct }
+| id                        { Ok (Id (lexeme lexbuf)) }
+| eof                       { Ok Eof }
+| _                         { Error unknownIdentifier }
 
-and singleLineComment logger = parse
-| newline					{ setNextLine lexbuf; tokenize logger lexbuf }
-| eof						{ Eof }
-| _							{ singleLineComment logger lexbuf }
+and singleLineComment = parse
+| newline                   { setNextLine lexbuf; tokenize lexbuf }
+| eof                       { Ok Eof }
+| _	                        { singleLineComment lexbuf }
 
-and string logger pos state = parse
-| '"'                       { LitString (state.ToString ()) }
-| eof                       { logger.log (messageInfo pos (endPos lexbuf) unmatchedDoubleQuote); Eof }
-| newline                   { logger.log (messageInfo pos (endPos lexbuf) unmatchedDoubleQuote); setNextLine lexbuf; tokenize logger lexbuf }
-| _                         { string logger pos (state.Append (lexeme lexbuf)) lexbuf}
+and singleLineString pos state = parse
+| '"'                       { lexbuf.StartPos <- pos; Ok (LitString (string state)) }
+| newline                   { setNextLine lexbuf; Error unmatchedDoubleQuote }
+| eof                       { Error unmatchedDoubleQuote }
+| _                         { singleLineString pos (state.Append (lexeme lexbuf)) lexbuf }
