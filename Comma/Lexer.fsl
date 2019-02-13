@@ -1,10 +1,11 @@
 ﻿{
-module Lexer
+module rec Lexer
 
 open System
 open System.Text
 open Microsoft.FSharp.Text.Lexing
 open Comma.Errors
+open Comma.ErrorLogger
 open Parser
 
 let spos (lexbuf: LexBuffer<_>) = lexbuf.StartPos
@@ -19,6 +20,21 @@ let tryInt32 lexeme =
 let tryFloat lexeme =
     try Ok (LitFloat (float lexeme))
     with _ -> Error invalidFloat
+
+let rec getToken (logger: Logger) (lexbuf: LexBuffer<_>) =
+    let lex = tokenize lexbuf
+
+    let pos = let ep = epos lexbuf in ep.Line + 1, ep.Column    
+    let logToken tok  =  info logger (sprintf "%A: %A" pos tok)
+    let logError text = error logger (sprintf "%A: %s" pos text)
+    
+    match lex with
+    | Ok tok     -> logToken tok; tok
+    | Error text -> 
+        logError text 
+        match lexbuf.IsPastEndOfStream with
+        | false -> getToken logger lexbuf
+        | true  -> logToken Eof; Eof
 }
 
 let digit = ['0'-'9']

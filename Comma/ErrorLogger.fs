@@ -43,7 +43,7 @@ module ErrorLogger =
 
         { log = log }
 
-    let debugLogger =   { log = format >> Debug.WriteLine }
+    let debugLogger = { log = format >> Debug.WriteLine }
     let fileLogger (file:TextWriter) = { log = format >> file.WriteLine }
    
     let info logger = MInfo >> logger.log

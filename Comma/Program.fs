@@ -23,30 +23,14 @@ let safeOpenFile filename : Result<FileStream, string> =
             Error ("Wrong file format: " + filename)
     | false ->
         Error ("File does not exist: " + filename)
-
-let rec getToken logger (lexbuf: LexBuffer<_>) =
-    let lex = Lexer.tokenize lexbuf
-
-    let pos = let ep = lexbuf.EndPos in ep.Line + 1, ep.Column    
-    let logToken tok  =  info logger (sprintf "%A: %A" pos tok)
-    let logError text = error logger (sprintf "%A: %s" pos text)
-    
-    match lex with
-    | Ok tok     -> logToken tok; tok
-    | Error text -> 
-        logError text 
-        match lexbuf.IsPastEndOfStream with
-        | false -> getToken logger lexbuf
-        | true  -> logToken Eof; Eof
-
     
 let compileFromLexbuf (lexbuf:LexBuffer<_>) =
     use file = File.CreateText "lex.output.txt"
     let logger = (consoleLogger >=> (* debugLogger >=> *) fileLogger file)
 
     let rec iterate () =
-        match getToken logger lexbuf with 
-        | Eof ->         () 
+        match Lexer.getToken logger lexbuf with 
+        | Eof -> () 
         | _   -> iterate ()
 
     iterate ()
