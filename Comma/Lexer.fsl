@@ -1,5 +1,5 @@
 ﻿{
-module rec Lexer
+module Lexer
 
 open System
 open System.Text
@@ -20,30 +20,16 @@ let tryInt32 lexeme =
 let tryFloat lexeme =
     try Ok (LitFloat (float lexeme))
     with _ -> Error invalidFloat
-
-let rec getToken (logger: Logger) (lexbuf: LexBuffer<_>) =
-    let lex = tokenize lexbuf
-
-    let pos = let ep = epos lexbuf in ep.Line + 1, ep.Column    
-    let logToken tok  =  info logger (sprintf "%A: %A" pos tok)
-    let logError text = error logger (sprintf "%A: %s" pos text)
-    
-    match lex with
-    | Ok tok     -> logToken tok; tok
-    | Error text -> 
-        logError text 
-        match lexbuf.IsPastEndOfStream with
-        | false -> getToken logger lexbuf
-        | true  -> logToken Eof; Eof
 }
 
 let digit = ['0'-'9']
+let integer = '0'|['1'-'9']digit*
 let alpha = ['a'-'z' 'A'-'Z']
 let whitespace = [' ' '\t']
 let newline = ('\n' | '\r' '\n')
 let scientific = ['e''E']['+''-']? digit+
 let fixed = '.' digit+
-let float = digit+ (fixed | scientific | fixed scientific)
+let float = integer (fixed | scientific | fixed scientific)
 let id = ['_']* alpha (alpha | digit | '_')*
 
 rule tokenize = parse
@@ -51,7 +37,7 @@ rule tokenize = parse
 | newline                   { setNextLine lexbuf; tokenize lexbuf }
 | whitespace                { tokenize lexbuf }
 | '"'                       { singleLineString (epos lexbuf) (new StringBuilder()) lexbuf }
-| digit+                    { tryInt32 (lexeme lexbuf) }
+| integer					{ tryInt32 (lexeme lexbuf) }
 | float                     { tryFloat (lexeme lexbuf) }
 | "true"                    { Ok (LitBool true) }
 | "false"                   { Ok (LitBool false) }
@@ -105,3 +91,20 @@ and singleLineString pos state = parse
 | newline                   { setNextLine lexbuf; Error unmatchedDoubleQuote }
 | eof                       { Error unmatchedDoubleQuote }
 | _                         { singleLineString pos (state.Append (lexeme lexbuf)) lexbuf }
+
+{
+let rec getToken (logger: Logger) (lexbuf: LexBuffer<_>) =
+    let lex = tokenize lexbuf
+
+    let pos = let ep = epos lexbuf in ep.Line + 1, ep.Column    
+    let logToken tok  =  info logger (sprintf "%A: %A" pos tok)
+    let logError text = error logger (sprintf "%A: %s" pos text)
+    
+    match lex with
+    | Ok tok     -> logToken tok; tok
+    | Error text -> 
+        logError text 
+        match lexbuf.IsPastEndOfStream with
+        | false -> getToken logger lexbuf
+        | true  -> logToken Eof; Eof
+}
