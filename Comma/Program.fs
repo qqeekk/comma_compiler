@@ -30,7 +30,7 @@ let compileFromLexbuf (lexbuf:LexBuffer<_>) =
 
     let rec iterate () =
         match Lexer.getToken logger lexbuf with 
-        | Eof -> () 
+        | Eof _ -> () 
         | _   -> iterate ()
 
     iterate ()

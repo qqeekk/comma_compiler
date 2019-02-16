@@ -2,7 +2,7 @@
 open Microsoft.FSharp.Text.Lexing
 
 module Errors =
-    type Message = | MError of string | MInfo of string
+    type Message = | MError of string | MInfo of string | MTrace of string
 
     let integerOverflow = "This number is outside the allowable range for 32-bit signed integers"
     let unknownIdentifier = "Invalid symbol or identifier"
@@ -22,6 +22,7 @@ module ErrorLogger =
     let format = function 
         | MError m -> sprintf "[Error] %s" m 
         | MInfo m  -> sprintf "[Info] %s" m
+        | MTrace m -> sprintf "[Trace] %s" m
 
     let inline ifDebug (value : Lazy<_>) = 
         #if DEBUG 
@@ -39,8 +40,8 @@ module ErrorLogger =
         
         let log = function 
             | MError _ as e -> printWithColor ConsoleColor.Red (format e)
-            | MInfo _  as i -> ifDebug (lazy printfn "%s" (format i))
-
+            | MInfo _  as i -> ifDebug (lazy printWithColor ConsoleColor.Cyan (format i))
+            | MTrace _ as t -> ifDebug (lazy printfn "%s" (format t))
         { log = log }
 
     let debugLogger = { log = format >> Debug.WriteLine }
@@ -48,3 +49,4 @@ module ErrorLogger =
    
     let info logger = MInfo >> logger.log
     let error logger = MError >> logger.log
+    let trace logger = MTrace >> logger.log

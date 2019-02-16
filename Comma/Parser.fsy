@@ -14,7 +14,11 @@
 %token Plus Minus Asterisk LSlash Eq Greater Less GreaterEq LessEq EqEq BangEq
 %token AmpAmp BarBar Bang LParen RParen LBrace RBrace LBrack RBrack Semicolon Colon RArrow Dot Comma 
 %token While Do GoTo Break Continue If Else Func Return Var Struct
+
+/* These are artificial */
 %token Eof
+%token <string> LexFailure 
+
 %type <unit> parse
 
 %%
