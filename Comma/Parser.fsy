@@ -21,7 +21,16 @@
 
 %type <unit> program
 
+%left Comma
 %right Eq
+%left BarBar
+%left AmpAmp
+%left EqEq BangEq
+%left Greater GreaterEq Less LessEq
+%left Plus Minus
+%left Asterisk LSlash 
+%right Bang //TODO: add unary plus minus
+%left LParen RParen LBrack RBrack Dot
 
 %%
 program: 
@@ -90,10 +99,10 @@ expr:
     | LitFloat                      {()}
     | LitString                     {()}
     | LitBool                       {()}
+    | Id                            {()}
     | Id LBrace assocList RBrace    {()}    // type init
 
     /* unary */
-    | lvalue                        {()}
     | expr Dot Id                   {()}
     | expr LBrack expr RBrack       {()}
     | Bang expr                     {()}
@@ -102,7 +111,7 @@ expr:
     | LParen expr RParen            {()}
 
     | Id LParen exprList RParen     {()}    // funcall
-    | lvalue Eq expr                {()}    // assign
+    | expr Eq expr                  {()}    // assign
     | expr Plus expr                {()}
     | expr Minus expr               {()}
     | expr Asterisk expr            {()}
@@ -115,11 +124,6 @@ expr:
     | expr Greater expr             {()}
     | expr LessEq expr              {()}
     | expr Less expr                {()}
-
-lvalue:
-    | Id                            {()}
-    | lvalue Dot Id                 {()}
-    | lvalue LBrack expr RBrack     {()}
 
 assocList:
     | assoc Comma assocList         {()}
