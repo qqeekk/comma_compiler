@@ -3,7 +3,7 @@
 
 %}
 
-%start parse
+%start program
 
 // Token definitions
 %token <string> Id
@@ -19,10 +19,119 @@
 %token Eof
 %token <string> LexFailure 
 
-%type <unit> parse
+%type <unit> program
+
+%right Eq
 
 %%
-parse: 
-	| {()}
+program: 
+	| funDecl program                       {()}
+    | typeDecl program                      {()}
+    |                                       {()}
+
+typeDecl:
+    | Struct Id LBrace paramList RBrace {
+        ()
+    }
+
+funDecl:
+    | Func Id LParen paramList RParen RArrow typeId LBrace stmtList RBrace {
+        ()
+    }
+
+paramList:
+    | paramDecl Comma paramList     {()}
+    | paramDecl                     {()}
+    |                               {()}
+
+paramDecl: 
+    | Id Colon typeId               {()}
+
+typeId:
+    | Id                            {()}
+    | LBrack Id RBrack              {()}
+
+stmtList:
+    | stmt stmtList                 {()}
+    | stmt                          {()}
+
+stmt:
+    | Semicolon                     {()}
+    | expr Semicolon                {()}
+    | varDecl Semicolon             {()}
+    | whileLoop                     {()}
+    | ifElse                        {()}
+    | Id Colon                      {()}
+    | Return expr Semicolon         {()}
+    | Break Semicolon               {()}
+    | Continue Semicolon            {()}
+    | GoTo LitInt                   {()}
+
+varDecl:
+    | Var paramDecl Eq expr         {()}
+
+whileLoop:
+    | While LParen expr RParen LBrace stmtList RBrace {
+        ()
+    }
+
+    | Do LBrace stmtList RBrace While LParen expr RParen Semicolon {
+        ()
+    }
+
+ifElse:
+    | If LParen expr RParen LBrace stmtList RBrace Else LBrace stmtList RBrace {
+        ()
+    }
+
+expr:
+    /* literals and constructors */
+    | LitInt                        {()}
+    | LitFloat                      {()}
+    | LitString                     {()}
+    | LitBool                       {()}
+    | Id LBrace assocList RBrace    {()}    // type init
+
+    /* unary */
+    | lvalue                        {()}
+    | expr Dot Id                   {()}
+    | expr LBrack expr RBrack       {()}
+    | Bang expr                     {()}
+    | Plus expr                     {()}
+    | Minus expr                    {()}
+    | LParen expr RParen            {()}
+
+    | Id LParen exprList RParen     {()}    // funcall
+    | lvalue Eq expr                {()}    // assign
+    | expr Plus expr                {()}
+    | expr Minus expr               {()}
+    | expr Asterisk expr            {()}
+    | expr LSlash expr              {()}
+    | expr BarBar expr              {()}
+    | expr AmpAmp expr              {()}
+    | expr EqEq expr                {()}
+    | expr BangEq expr              {()}
+    | expr GreaterEq expr           {()}
+    | expr Greater expr             {()}
+    | expr LessEq expr              {()}
+    | expr Less expr                {()}
+
+lvalue:
+    | Id                            {()}
+    | lvalue Dot Id                 {()}
+    | lvalue LBrack expr RBrack     {()}
+
+assocList:
+    | assoc Comma assocList         {()}
+    | assoc                         {()}
+    |                               {()}
+
+assoc:
+    | Id Eq expr                    {()}
+
+exprList:
+    | expr Comma exprList           {()}
+    | expr                          {()}
+    |                               {()}
 
 %%

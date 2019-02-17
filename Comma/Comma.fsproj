@@ -12,7 +12,7 @@
 
   <ItemGroup>
     <FsYacc Include="Parser.fsy">
-      <OtherFlags>--module Parser</OtherFlags>
+      <OtherFlags>-v --module Parser</OtherFlags>
     </FsYacc>
     <FsLex Include="Lexer.fsl" />
     <Compile Include="ErrorLogger.fs" />

@@ -84,7 +84,7 @@ rule tokenize = parse
 and singleLineComment = parse
 | newline                   { setNextLine lexbuf; tokenize lexbuf }
 | eof                       { Ok Eof }
-| _	                        { singleLineComment lexbuf }
+| _                         { singleLineComment lexbuf }
 
 and singleLineString pos state = parse
 | '"'                       { lexbuf.StartPos <- pos; Ok (LitString (string state)) }
