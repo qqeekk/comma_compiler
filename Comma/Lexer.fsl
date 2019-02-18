@@ -94,10 +94,11 @@ and singleLineString pos state = parse
 
 {
 let rec getToken (logger: Logger) (lexbuf: LexBuffer<_>) =
+    let lex = tokenize lexbuf
     let pos = let ep = epos lexbuf in ep.Line + 1, ep.Column   
     let log f text = f logger (sprintf "%A: %s" pos text)
     
-    match (tokenize lexbuf) with
+    match lex with
     | Ok tok -> 
         log trace (string tok); tok
     | Error (text, tok) -> 
