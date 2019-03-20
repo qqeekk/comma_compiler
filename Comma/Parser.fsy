@@ -1,6 +1,13 @@
 ﻿// This is an empty parser. 
 %{
+open Ast
 
+let reportParseErrorAt range message =
+    KnownError (range,message) |> handleError 
+
+// this is used by auto-generated parser.
+let parse_error_rich : (ParseErrorContext<_> -> unit) option = 
+    Some (SyntaxError >> handleError)
 %}
 
 %start program
@@ -18,8 +25,14 @@
 /* These are artificial */
 %token Eof
 %token <string> LexFailure 
+%token UMinus
 
-%type <unit> program
+%type <Ast.Decl list> program
+%type <Ast.Decl> typeDecl funDecl
+%type <Ast.TypeId> typeId
+%type <Ast.Stmt> stmt varDecl ifElse
+%type <Ast.LoopStmt> whileLoop
+%type <Ast.Expr> expr
 
 %left Comma
 %right Eq
@@ -29,113 +42,121 @@
 %left Greater GreaterEq Less LessEq
 %left Plus Minus
 %left Asterisk LSlash 
-%right Bang //TODO: add unary plus minus
-%left LParen RParen LBrack RBrack Dot
+%right Bang UMinus UPlus
+%left LBrace RBrace LParen RParen LBrack RBrack Dot
+%left Else
 
 %%
 program: 
-	| funDecl program                       {()}
-    | typeDecl program                      {()}
-    |                                       {()}
+    | funDecl program                       { $1 :: $2 }
+    | typeDecl program                      { $1 :: $2 }
+    |                                       { [] }
 
 typeDecl:
-    | Struct Id LBrace paramList RBrace {
-        ()
-    }
+    | Struct Id LBrace paramList RBrace 
+        { TypeDecl { name = $2; fields = $4 } }
+
+    | Struct error Id LBrace paramList RBrace 
+        { reportParseErrorAt (tokenPos parseState 2) "wrong token in function declaration"
+          (* silent recovery *) TypeDecl { name = $3; fields = $5 } }
 
 funDecl:
-    | Func Id LParen paramList RParen RArrow typeId LBrace stmtList RBrace {
-        ()
-    }
+    //func Id      ( paramList      )     -> typeId      { stmtList      }
+    | Func Id LParen paramList RParen RArrow typeId LBrace stmtList RBrace 
+        { FunDecl { name = $2; _params = $4; retType = $7; body = $9 } }
 
 paramList:
-    | paramDecl Comma paramList     {()}
-    | paramDecl                     {()}
-    |                               {()}
+    | paramDecl Comma paramList     { $1 :: $3 }
+    | paramDecl                     { [$1] }
+    |                               { [] }
 
 paramDecl: 
-    | Id Colon typeId               {()}
+    | Id Colon typeId               { $1, $3 }
 
 typeId:
-    | Id                            {()}
-    | LBrack Id RBrack              {()}
+    | Id                            { Single $1 }
+    | LBrack Id RBrack              { Array $2 }
 
 stmtList:
-    | stmt stmtList                 {()}
-    | stmt                          {()}
+    | stmt stmtList                 { $1 :: $2 }
+    | stmt                          { [$1] }
 
 stmt:
-    | Semicolon                     {()}
-    | expr Semicolon                {()}
-    | varDecl Semicolon             {()}
-    | whileLoop                     {()}
-    | ifElse                        {()}
-    | Id Colon                      {()}
-    | Return expr Semicolon         {()}
-    | Break Semicolon               {()}
-    | Continue Semicolon            {()}
-    | GoTo LitInt                   {()}
+    | Semicolon                     { Empty }
+    | expr Semicolon                { Expression $1 }
+    | varDecl Semicolon             { $1 }
+    | whileLoop                     { Loop $1 }
+    | ifElse                        { $1 }
+    | Id Colon                      { Label $1 }
+    | Return expr Semicolon         { Ast.Stmt.Return $2 }
+    | Break Semicolon               { Ast.Stmt.Break }
+    | Continue Semicolon            { Ast.Stmt.Continue }
+    | GoTo Id Semicolon             { Ast.Stmt.GoTo $2 }
+    | LBrace stmtList RBrace        { Ast.Stmt.StmtBlock $2 }
 
 varDecl:
-    | Var paramDecl Eq expr         {()}
+    | Var paramDecl Eq expr         { VarDecl ($2, $4) }
 
 whileLoop:
-    | While LParen expr RParen LBrace stmtList RBrace {
-        ()
-    }
+    //while      ( expr      ) stmt
+    | While LParen expr RParen stmt 
+        { Ast.LoopStmt.While ($3, $5) }
 
-    | Do LBrace stmtList RBrace While LParen expr RParen Semicolon {
-        ()
-    }
+    //do stmt while      ( expr      )         ;
+    | Do stmt While LParen expr RParen Semicolon 
+        { DoWhile ($2, $5) }
 
 ifElse:
-    | If LParen expr RParen LBrace stmtList RBrace Else LBrace stmtList RBrace {
-        ()
-    }
+    //if      ( expr      ) stmt else stmt
+    | If LParen expr RParen stmt Else stmt 
+        { IfElse ($3, $5, $7) }
+
+    //if      ( expr      ) stmt
+    | If LParen expr RParen stmt 
+        { IfElse ($3, $5, Empty) }
 
 expr:
     /* literals and constructors */
-    | LitInt                        {()}
-    | LitFloat                      {()}
-    | LitString                     {()}
-    | LitBool                       {()}
-    | Id                            {()}
-    | Id LBrace assocList RBrace    {()}    // type init
+    | LitInt                        { Integer $1 }
+    | LitFloat                      { Float $1 }
+    | LitString                     { String $1 }
+    | LitBool                       { Boolean $1 }
+    | Id                            { Identifier $1 }
+    | Id LBrace assocList RBrace    { StructInit ($1, $3) }    // type init
 
     /* unary */
-    | expr Dot Id                   {()}
-    | expr LBrack expr RBrack       {()}
-    | Bang expr                     {()}
-    | Plus expr                     {()}
-    | Minus expr                    {()}
-    | LParen expr RParen            {()}
+    | expr Dot Id                   { FieldAccess ($1, $3) }
+    | expr LBrack expr RBrack       { IndexOrArrayInit ($1, $3) }    // array index (a[10]) or array init (Int[6])
+    | Bang expr                     { Neg $2 }
+    | Minus expr %prec UMinus       { Ast.Expr.UMinus $2 }
+    | LParen expr RParen            { $2 }
 
-    | Id LParen exprList RParen     {()}    // funcall
-    | expr Eq expr                  {()}    // assign
-    | expr Plus expr                {()}
-    | expr Minus expr               {()}
-    | expr Asterisk expr            {()}
-    | expr LSlash expr              {()}
-    | expr BarBar expr              {()}
-    | expr AmpAmp expr              {()}
-    | expr EqEq expr                {()}
-    | expr BangEq expr              {()}
-    | expr GreaterEq expr           {()}
-    | expr Greater expr             {()}
-    | expr LessEq expr              {()}
-    | expr Less expr                {()}
+    | Id LParen exprList RParen     { FuncApp ($1, $3) }    // funcall
+    | expr Eq expr                  { Assign ($1, $3) }    // assign
+    | expr Plus expr                { Add ($1, $3) }
+    | expr Minus expr               { Sub ($1, $3) }
+    | expr Asterisk expr            { Mul ($1, $3) }
+    | expr LSlash expr              { Div ($1, $3) }
+    | expr BarBar expr              { Or ($1, $3) }
+    | expr AmpAmp expr              { And ($1, $3) }
+    | expr EqEq expr                { Equals ($1, $3) }
+    | expr BangEq expr              { Neg (Equals ($1, $3)) }
+    | expr GreaterEq expr           { Ast.Expr.GreaterEq ($1, $3) }
+    | expr Greater expr             { Ast.Expr.Greater ($1, $3) }
+    | expr LessEq expr              { Ast.Expr.GreaterEq ($3, $1) }
+    | expr Less expr                { Ast.Expr.Greater ($3, $1) }
 
 assocList:
-    | assoc Comma assocList         {()}
-    | assoc                         {()}
-    |                               {()}
+    | assoc Comma assocList         { $1 :: $3 }
+    | assoc                         { [$1] }
+    |                               { [] }
 
 assoc:
-    | Id Eq expr                    {()}
+    | Id Eq expr                    { $1, $3 }
 
 exprList:
-    | expr Comma exprList           {()}
-    | expr                          {()}
-    |                               {()}
+    | expr Comma exprList           { $1 :: $3 }
+    | expr                          { [$1] }
+    |                               { [] }
 
 %%

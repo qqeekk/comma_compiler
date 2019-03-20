@@ -15,8 +15,9 @@
       <OtherFlags>-v --module Parser</OtherFlags>
     </FsYacc>
     <FsLex Include="Lexer.fsl" />
-    <Compile Include="ErrorLogger.fs" />
+    <Compile Include="Ast.fs" />
     <Compile Include="Parser.fsi" />
+    <Compile Include="ErrorLogger.fs" />
     <Compile Include="Parser.fs" />
     <Compile Include="Lexer.fs" />
     <Compile Include="Program.fs" />
@@ -24,6 +25,7 @@
 
   <ItemGroup>
     <PackageReference Include="FsLexYacc" Version="7.0.6" />
+    <PackageReference Include="FsPickler" Version="5.2.0" />
   </ItemGroup>
 
 </Project>

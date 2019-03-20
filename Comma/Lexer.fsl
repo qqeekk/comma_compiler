@@ -93,7 +93,7 @@ and singleLineString pos state = parse
 | _                         { singleLineString pos (state.Append (lexeme lexbuf)) lexbuf }
 
 {
-let rec getToken (logger: Logger) (lexbuf: LexBuffer<_>) =
+let getToken (logger: Logger) (lexbuf: LexBuffer<_>) =
     let lex = tokenize lexbuf
     let pos = let ep = epos lexbuf in ep.Line + 1, ep.Column   
     let log f text = f logger (sprintf "%A: %s" pos text)

@@ -264,3 +264,4 @@ __pycache__/
 **/Parser.fs
 **/Lexer.fs
 **/Properties/launchSettings.json
+**/*.fsyacc.output
