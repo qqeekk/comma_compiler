@@ -265,3 +265,4 @@ __pycache__/
 **/Lexer.fs
 **/Properties/launchSettings.json
 **/*.fsyacc.output
+!**/bin/Release/netcoreapp2.1/win10-x64/*
