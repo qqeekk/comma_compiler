@@ -1,53 +1,103 @@
 ﻿module Ast
-open Microsoft.FSharp.Text.Parsing
 
-type Param = string * TypeId
-and FunDecl = { name : string; _params : Param list; retType : TypeId; body : Stmt list }
-and TypeDecl = { name : string; fields : Param list}
-and Decl =
-    | FunDecl of FunDecl
-    | TypeDecl of TypeDecl
-and TypeId = 
-    | Single of string
-    | Array of string
-and Stmt =
-    | Empty
-    | Expression of Expr
-    | VarDecl of Param * Expr
-    | Loop of LoopStmt
-    | IfElse of Expr * Stmt * Stmt
-    | Label of string
-    | GoTo of string
-    | Return of Expr
-    | Break 
-    | Continue
-    | StmtBlock of Stmt list
-and LoopStmt =
-    | While of Expr * Stmt
-    | DoWhile of Stmt * Expr
+open FSharp.Text.Lexing
+open FSharp.Text.Parsing
+
+type Positions = Position * Position
+
+type InitExpr =
+    | StructInit of string * ((string * Positions) * ExprPos) list
+    | ArrayInit of string * int
+
+and AssignableExpr =
+    | Identifier of string
+    | FieldAccess of ExprPos * string
+    | ArrayIndex of ExprPos * ExprPos
+and AssignableExprPos = AssignableExpr * Positions
+
+and SideEffectExpr =
+    | InitExpr of InitExpr
+    | FuncApp of string * (ExprPos list)
+    | Assign of AssignableExprPos * ExprPos
+
 and Expr = 
     | Integer of int
     | Boolean of bool
     | Float of float
     | String of string
-    | Identifier of string
-    | StructInit of string * (string * Expr) list
-    | FieldAccess of Expr * string
-    | IndexOrArrayInit of Expr * Expr
+    | Assignable of AssignableExpr
+    | SideEffect of SideEffectExpr
+
     | Neg of Expr
     | UMinus of Expr
-    | FuncApp of string * (Expr list)
-    | Assign of Expr * Expr
-    | Add of Expr * Expr
-    | Sub of Expr * Expr
-    | Mul of Expr * Expr
-    | Div of Expr * Expr
-    | Or of Expr * Expr
-    | And of Expr * Expr
-    | Equals of Expr * Expr
-    | Greater of Expr * Expr
-    | GreaterEq of Expr * Expr
 
-exception SyntaxError of ParseErrorContext<obj>
+    | Add of ExprPos * ExprPos
+    | Sub of ExprPos * ExprPos
+    | Mul of ExprPos * ExprPos
+    | Div of ExprPos * ExprPos
+    | Or of ExprPos * ExprPos
+    | And of ExprPos * ExprPos
+    | Equals of ExprPos * ExprPos
+    | Greater of ExprPos * ExprPos
+    | GreaterEq of ExprPos * ExprPos
+    | ErrorExp // artifical
+and ExprPos = Expr * Positions
 
-let internal tokenPos (parseState: IParseState) : int -> _ = parseState.InputRange
+type TypeId = 
+    | Single of string
+    | Array of string
+type TypeIdPos = TypeId * Positions
+
+type Param = string * TypeIdPos
+type ParamPos = Param * Positions
+
+type Stmt =
+    | Empty
+    | SideEffect of SideEffectExpr
+    | VarDecl of ParamPos * ExprPos
+    | Loop of LoopStmt
+    | IfElse of ExprPos * StmtPos * StmtPos option
+    | Label of string
+    | GoTo of string
+    | Return of Expr
+    | Break
+    | Continue
+    | StmtBlock of StmtPos list
+and StmtPos = Stmt * Positions
+
+and LoopStmt =
+    | While of ExprPos * StmtPos
+    | DoWhile of StmtPos * ExprPos
+
+type FunSignature = ParamPos list * TypeIdPos
+
+type FunDecl = { name : string; signature : FunSignature * Positions; body : StmtPos list }
+
+type TypeDecl = { name : string; fields : ParamPos list }
+
+type Decl =
+    | FunDecl of FunDecl
+    | TypeDecl of TypeDecl
+type DeclPos = Decl * Positions
+
+type Program = DeclPos list
+
+type CompileStage = Lexing | Parsing | TypeCheck
+
+type TaggedMessage = TaggedMessage of CompileStage * Positions * string
+
+let private pretty (pos: Position) = (pos.Line + 1, pos.Column + 1)    
+
+let formatMessage (TaggedMessage (stage, (pos1, pos2), mes)) =
+    sprintf "[%A] %A - %A: %s" stage (pretty pos1) (pretty pos2) mes
+ 
+let internal pos (parseState: IParseState) : int -> _ = parseState.InputRange
+let internal inpos (parseState: IParseState) i j = (parseState.InputEndPosition i, parseState.InputStartPosition j)
+let internal enpos (parseState: IParseState) i j = (parseState.InputStartPosition i, parseState.InputEndPosition j)
+
+let internal opos (parseState: IParseState) i = inpos parseState (i-1) (i+1)
+let internal lpos (parseState: IParseState) i = (parseState.InputStartPosition i, parseState.InputStartPosition (i+1))
+let internal rpos (parseState: IParseState) i = (parseState.InputEndPosition (i-1), parseState.InputEndPosition i)
+
+let mutable internal handleError : TaggedMessage -> unit = ignore
+let reportErrorAt stage range message = handleError (TaggedMessage (stage, range, message))

@@ -1,23 +1,13 @@
-﻿open Microsoft.FSharp.Text.Lexing
-open System.Text
+﻿open System.Text
 open System.IO
-open Parser
 open Comma.ErrorLogger
-open System.Runtime.Serialization
-open System.Xml
-open MBrace.FsPickler
-open MBrace.FsPickler.Combinators
+open FSharp.Text.Lexing
+open Comma
+open AstSerializer
+open System
 
 let fileExtensions = [| ".cmm" |]
-let encoding = Encoding.UTF8
-
-
-let serializeToXML o =
-    let xmlSerializer = FsPickler.CreateXmlSerializer(indent = true)
-    use writer = new StringWriter ()
-    xmlSerializer.Serialize (writer, o)
-    writer.ToString()
-   
+let encoding = Encoding.UTF8   
 
 let safeOpenFile filename : Result<FileStream, string> = 
     match File.Exists filename with
@@ -26,18 +16,20 @@ let safeOpenFile filename : Result<FileStream, string> =
         | true -> 
             try Ok (File.OpenRead filename)
             with _ -> Error ("Cannot open a file: " + filename)
-        | false -> Error ("Wrong file format: " + filename)
-    | false -> Error ("File does not exist: " + filename)
-    
+        | _ -> Error ("Wrong file format: " + filename)
+    | _ -> Error ("File does not exist: " + filename)
+
 
 let compileFromLexbuf (lexbuf:LexBuffer<_>) =
     use file = File.CreateText "lex.output.txt"
-    let logger = (consoleLogger >=> (* debugLogger >=> *) fileLogger file)
+    let logger = combine [ consoleLogger; debugLogger; fileLogger file ]
 
-    //iterate ()
+    Ast.handleError <- Ast.formatMessage >> error logger
     let parsed = Parser.program (Lexer.getToken logger) lexbuf
-    info logger (string parsed)
-    //info logger (serializeToXML parsed)
+    do TypedAst.transProgram parsed
+    
+    use xmlFile = File.Create "ast.xml"
+    (serializeToXml parsed).Save xmlFile
 
 
 let compileText (text: string) =
@@ -54,7 +46,10 @@ let compileFile filename =
 
 
 [<EntryPoint>]
-let main = function
-    | [| "-f" ; filename |] -> compileFile filename; 0
-    | [| text |]            -> compileText text; 0
-    | _                     -> printfn "Wrong arguments"; 1
+let main _ = 
+    while true do
+        do printf "> compile -file "
+        do Console.ReadLine () |> compileFile
+        do printfn ""
+
+    0

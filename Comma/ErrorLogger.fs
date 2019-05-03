@@ -1,5 +1,4 @@
 ﻿namespace Comma
-open Microsoft.FSharp.Text.Lexing
 
 module Errors =
     type Message = | MError of string | MInfo of string | MTrace of string
@@ -17,9 +16,10 @@ module ErrorLogger =
 
     type Logger = { log : Message -> unit }
 
-    let (>=>) logger1 logger2 = {log = fun e -> logger1.log e; logger2.log e}
+    let combine loggers = 
+        { log = fun e -> List.iter (fun l -> l.log e) loggers }
     
-    let format = function 
+    let private format = function 
         | MError m -> sprintf "[Error] %s" m 
         | MInfo m  -> sprintf "[Info] %s" m
         | MTrace m -> sprintf "[Trace] %s" m
@@ -38,11 +38,10 @@ module ErrorLogger =
             printfn "%s" msg
             Console.ForegroundColor <- curColor
         
-        let log = function 
+        { log = function 
             | MError _ as e -> printWithColor ConsoleColor.Red (format e)
             | MInfo _  as i -> ifDebug (lazy printWithColor ConsoleColor.Cyan (format i))
-            | MTrace _ as t -> ifDebug (lazy printfn "%s" (format t))
-        { log = log }
+            | MTrace _ as t -> () (*ifDebug (lazy printfn "%s" (format t))*) }
 
     let debugLogger = { log = format >> Debug.WriteLine }
     let fileLogger (file:TextWriter) = { log = format >> file.WriteLine }

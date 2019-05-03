@@ -3,23 +3,22 @@ module Lexer
 
 open System
 open System.Text
-open Microsoft.FSharp.Text.Lexing
+open FSharp.Text.Lexing
+open Ast
 open Comma.Errors
 open Comma.ErrorLogger
 open Parser
 
-let spos (lexbuf: LexBuffer<_>) = lexbuf.StartPos
-let epos (lexbuf: LexBuffer<_>) = lexbuf.EndPos
 let lexeme (lexbuf:LexBuffer<_>) = Encoding.UTF8.GetString(lexbuf.Lexeme)
 let setNextLine (lexbuf:LexBuffer<_>) = lexbuf.EndPos <- lexbuf.EndPos.NextLine
 
 let tryInt32 lexeme =
     try Ok (LitInt (int lexeme))
-    with _ -> Error (integerOverflow, LitInt 0)
+    with _ -> Result.Error (integerOverflow, LitInt 0)
 
 let tryFloat lexeme =
     try Ok (LitFloat (float lexeme))
-    with _ -> Error (invalidFloat, LitFloat 0.)
+    with _ -> Result.Error (invalidFloat, LitFloat 0.)
 }
 
 let digit = ['0'-'9']
@@ -36,7 +35,7 @@ rule tokenize = parse
 | "//"                      { singleLineComment lexbuf }	
 | newline                   { setNextLine lexbuf; tokenize lexbuf }
 | whitespace                { tokenize lexbuf }
-| '"'                       { singleLineString (epos lexbuf) (new StringBuilder()) lexbuf }
+| '"'                       { singleLineString (lexbuf.EndPos) (new StringBuilder()) lexbuf }
 | integer                   { tryInt32 (lexeme lexbuf) }
 | float                     { tryFloat (lexeme lexbuf) }
 | "true"                    { Ok (LitBool true) }
@@ -77,9 +76,10 @@ rule tokenize = parse
 | "return"                  { Ok Return }
 | "var"                     { Ok Var }
 | "struct"                  { Ok Struct }
+| "new"                     { Ok New }
 | id                        { Ok (Id (lexeme lexbuf)) }
 | eof                       { Ok Eof }
-| _                         { Error (unknownIdentifier, LexFailure (lexeme lexbuf)) }
+| _                         { Result.Error (unknownIdentifier, LexFailure (lexeme lexbuf)) }
 
 and singleLineComment = parse
 | newline                   { setNextLine lexbuf; tokenize lexbuf }
@@ -88,20 +88,16 @@ and singleLineComment = parse
 
 and singleLineString pos state = parse
 | '"'                       { lexbuf.StartPos <- pos; Ok (LitString (string state)) }
-| newline                   { setNextLine lexbuf; Error (unmatchedDoubleQuote, LitString (string state)) }
-| eof                       { Error (unmatchedDoubleQuote, Eof) }
+| newline                   { setNextLine lexbuf; Result.Error (unmatchedDoubleQuote, LitString (string state)) }
+| eof                       { Result.Error (unmatchedDoubleQuote, Eof) }
 | _                         { singleLineString pos (state.Append (lexeme lexbuf)) lexbuf }
 
 {
 let getToken (logger: Logger) (lexbuf: LexBuffer<_>) =
-    let lex = tokenize lexbuf
-    let pos = let ep = epos lexbuf in ep.Line + 1, ep.Column   
-    let log f text = f logger (sprintf "%A: %s" pos text)
-    
-    match lex with
+    match (tokenize lexbuf) with
     | Ok tok -> 
-        log trace (string tok); tok
-    | Error (text, tok) -> 
-        log error text; 
-        log info (sprintf "[RECOVER] %s" (string tok)); tok
+        trace logger (string tok); tok
+    | Result.Error (text, tok) -> 
+        Ast.handleError <| TaggedMessage (Lexing, (lexbuf.StartPos, lexbuf.EndPos), text)
+        info logger (sprintf "[RECOVER] %s" (string tok)); tok
 }
