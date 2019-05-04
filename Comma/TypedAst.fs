@@ -205,7 +205,7 @@ module rec TypedAst =
         | InitExpr (ArrayInit (typename, size)), pos ->
             match Types.lookup (TypeId.Single typename) (env.types) with
             | Ok (Single ty) when size >= 0 ->
-                Some (Single ty)
+                Some (Array ty)
             | Ok (Single _) -> 
                 do reportTypeErrorAt pos "Array size must be a positive integer"
                 None
