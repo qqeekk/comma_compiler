@@ -554,9 +554,6 @@ module rec TypedAst =
     let transProgram program = 
         let default_pos = Position.Empty, Position.Empty
         
-        if List.isEmpty program then 
-            reportTypeErrorAt default_pos "Empty program"
-
         let env = List.fold (transDecl) default' program
 
         match Functions.lookup "main" env.funcs with
