@@ -3,10 +3,7 @@ open FSharp.Text.Parsing
 open Ast
 open Comma.ErrorLogger
 
-//let parse_error_rich = Some (fun (ctxt: ParseErrorContext<_>) -> printfn "syntax")
-
 let reportParseErrorAt = Ast.reportErrorAt Parsing
-//let withPos parseState i j product = product, enpos parseState i j
 %}
 
 %start program
@@ -55,9 +52,9 @@ program:
     | Eof
         { [] }
 
-    | error Eof
-        { reportParseErrorAt (lpos parseState 1) "Invalid token on a top-level"
-          [] }
+    | error program
+        { reportParseErrorAt (lpos parseState 1) "Invalid tokens on a top level"
+          $2 }
 
     | typeDecl program
         { (Option.toList $1) @ $2 }
@@ -73,12 +70,12 @@ typeId:
     | LBrack Id RBrack
         { Some (Array $2, enpos parseState 1 3 ) }
 
-    | LBrack Id error
-        { reportParseErrorAt (rpos parseState 3) "Missing ']' in type declaration"
-          Some (Array $2, enpos parseState 1 3) }
+    | LBrack error
+        { reportParseErrorAt (rpos parseState 2) "Missing ']' in type declaration"
+          None }
 
-    | LBrack error              
-        { reportParseErrorAt (rpos parseState 2) "Invalid identifier in type declaration"
+    | LBrack error RBrack
+        { reportParseErrorAt (opos parseState 2) "Missing identifier in type declaration"
           None }
 
 
@@ -170,10 +167,6 @@ atomicStmt:
         { reportParseErrorAt (rpos parseState 2) "Invalid label identifier"
           Empty }
 
-    | error
-        { reportParseErrorAt (pos parseState 1) "Invalid statement"
-          Empty }
-
 
 stmt:
     | Semicolon
@@ -183,8 +176,12 @@ stmt:
         { $1, enpos parseState 1 2 }
 
     | atomicStmt error
-        { reportParseErrorAt (rpos parseState 2) "Invalid statement or missing semicolon"
+        { reportParseErrorAt (rpos parseState 2) "Missing semicolon"
           $1, enpos parseState 1 2 }
+
+    | error Semicolon
+        { reportParseErrorAt (lpos parseState 1) "Invalid statement"
+          Empty, pos parseState 1 }
 
     | Id Colon
         { Label $1, enpos parseState 1 2 }
@@ -197,10 +194,6 @@ stmt:
     
     | ifElse                        
         { $1, pos parseState 1 }
-
-    // | error
-    //     { reportParseErrorAt (pos parseState 1) "Invalid statement at or before of this point"
-    //       Empty, pos parseState 1 }
 
 
 stmtList:
@@ -254,6 +247,10 @@ sideEffectExpr:
     | Id LParen exprList RParen
         { FuncApp ($1, $3) }    // funcall
     
+    | Id LParen error RParen
+        { reportParseErrorAt (enpos parseState 2 4) "Ivalid expression list"
+          FuncApp ($1, []) }    // funcall
+
     | assignable Eq expr
         { Assign (($1, pos parseState 1), $3) }    // assign
     
@@ -313,6 +310,10 @@ exprList:
 stmtBlock:
     | LBrace stmtList RBrace
         { $2 }
+
+    | LBrace error RBrace
+        { reportParseErrorAt (inpos parseState 1 3) "Invalid statement block"
+          [] }
 
     | LBrace RBrace
         { [] }
