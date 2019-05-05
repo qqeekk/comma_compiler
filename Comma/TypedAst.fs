@@ -51,7 +51,12 @@ module Labels =
         | Some venv -> Ok venv
         | None -> Error ("No such label found: " + name)
 
-    let enter: _ -> _ -> Labels -> Labels = Map.add
+    let enter name env (labels : Labels) = 
+        if Map.containsKey name labels then
+            Error (sprintf "Label with name %s is already declared in this scope" name)
+        else
+            Map.add name env labels |> Ok
+    
     let default' : Labels = Map.empty
 
 module Functions =
@@ -100,7 +105,7 @@ module Types =
 module rec TypedAst =
     open FSharp.Text.Lexing
 
-    let expectedTypes (types: Ty seq) = "Expected types: " + (String.concat " | " (Seq.map string types))
+    let expectedTypes (types: TyEntry seq) = "Expected types: " + (String.concat " | " (Seq.map string types))
     let unmatchedTypes : TyEntry -> TyEntry -> _ = sprintf "Expected type %O but given %O"
     
     type Environment = 
@@ -152,10 +157,10 @@ module rec TypedAst =
             match Functions.lookup name (env.funcs) with
             | Ok (_, pars, retType) -> 
                 let exprs' = 
-                    exprs |> Seq.map (fun (expr, pos) -> getExprType env (expr, pos), pos) 
+                    exprs |> List.map (fun (expr, pos) -> getExprType env (expr, pos), pos) 
 
                 try 
-                    Seq.iteri2 (fun i pty (ety, epos) ->                        
+                    List.iteri2 (fun i pty (ety, epos) ->                        
                         match ety with
                         | Some ety' ->
                             if ety' <> pty then 
@@ -202,16 +207,27 @@ module rec TypedAst =
                 do reportTypeErrorAt pos m
                 None
 
-        | InitExpr (ArrayInit (typename, size)), pos ->
+        | InitExpr (ArrayInit (typename, (_, epos as expr))), pos ->
             match Types.lookup (TypeId.Single typename) (env.types) with
-            | Ok (Single ty) when size >= 0 ->
+            | Ok (Single ty) ->
+                match getExprType env expr with
+                | Some (Single Int) -> 
+                    match expr with
+                    | Integer i, _ when i >= 0 -> ()
+                    | _ -> reportTypeErrorAt epos "Array size must be compile-stage non-negative constant"
+                
+                | Some ty ->
+                    reportTypeErrorAt epos (unmatchedTypes (Single Int) ty)
+                
+                | None -> 
+                    reportTypeErrorAt epos (expectedTypes [Single Int])
+
                 Some (Array ty)
-            | Ok (Single _) -> 
-                do reportTypeErrorAt pos "Array size must be a positive integer"
-                None
+
             | Ok (Array _) -> 
                 do reportTypeErrorAt pos "Multidimensional arrays are not permitted"
                 None
+
             | Error m -> 
                 do reportTypeErrorAt pos m
                 None
@@ -274,7 +290,7 @@ module rec TypedAst =
                     do reportTypeErrorAt rpos (unmatchedTypes lty rty)
                     None
             | Some _, Some _ ->
-                do reportTypeErrorAt pos (expectedTypes [Int; Float; String])
+                do reportTypeErrorAt pos (expectedTypes [Single Int; Single Float; Single String])
                 None
             | _ -> 
                 None
@@ -290,7 +306,7 @@ module rec TypedAst =
                     do reportTypeErrorAt rpos (unmatchedTypes lty rty)
                     None
             | Some _, Some _ ->
-                do reportTypeErrorAt pos (expectedTypes [Int; Float])
+                do reportTypeErrorAt pos (expectedTypes [Single Int; Single Float])
                 None
             | _ -> 
                 None
@@ -309,7 +325,7 @@ module rec TypedAst =
                     do reportTypeErrorAt rpos (unmatchedTypes lty rty)
                     None
             | Some _, Some _ ->
-                do reportTypeErrorAt pos (expectedTypes [Int; Float])
+                do reportTypeErrorAt pos (expectedTypes [Single Int; Single Float])
                 None
             | _ ->
                 None
@@ -320,7 +336,7 @@ module rec TypedAst =
             | Some (Single Boolean) as ty, 
               Some (Single Boolean) -> ty
             | Some _, Some _ ->
-                do reportTypeErrorAt pos (expectedTypes [Boolean])
+                do reportTypeErrorAt pos (expectedTypes [Single Boolean])
                 None
             | _ -> 
                 None
@@ -329,7 +345,7 @@ module rec TypedAst =
             match getExprType env (expr, pos) with
             | Some (Single Boolean) as ty -> ty
             | Some ty ->
-                do reportTypeErrorAt pos (unmatchedTypes (Single Ty.Boolean) ty)
+                do reportTypeErrorAt pos (unmatchedTypes (Single Boolean) ty)
                 None
             | _  -> 
                 None
@@ -338,7 +354,7 @@ module rec TypedAst =
             match getExprType env (expr, pos) with
             | Some (Single (Int | Float)) as ty -> ty
             | Some _ ->
-                do reportTypeErrorAt pos (expectedTypes [Int; Float])
+                do reportTypeErrorAt pos (expectedTypes [Single Int; Single Float])
                 None
             | _ -> 
                 None
@@ -370,7 +386,7 @@ module rec TypedAst =
                     do reportTypeErrorAt rpos (unmatchedTypes lty rty)
                     None
             | Some _, Some _ ->
-                do reportTypeErrorAt pos (expectedTypes [Int; Float])
+                do reportTypeErrorAt pos (expectedTypes [Single Int; Single Float])
                 None
             | _ -> 
                 None
@@ -398,8 +414,15 @@ module rec TypedAst =
                 env
         
         | Empty, _ -> env
-        | Label l, _ -> 
-            { env with labels = Labels.enter l (env.vars) (env.labels) }
+        | Label l, pos -> 
+            match Labels.enter l (env.vars) (env.labels) with
+            | Ok ls ->
+                { env with labels = ls }
+            
+            | Error m ->
+                reportTypeErrorAt pos m
+                env
+
 
         | GoTo l, pos -> 
             match Labels.lookup l (env.labels) with
@@ -427,12 +450,19 @@ module rec TypedAst =
             | None -> ()
             
             let retType1 = (transStmt env left).retType
-            let retType2 = right |> Option.map (transStmt env >> fun env -> env.retType)
+            let retType2 = right |> Option.map (transStmt env >> fun env -> env.retType) |> Option.flatten
 
-            { env with retType = (env.retType, retType1, retType2)
-                                 |||> Option.map3 (fun (ty, r) (_, r1) optr2 -> 
-                                        let r2 = Option.fold (fun _ -> snd) false optr2
-                                        ty, r || (r1 && r2))  }
+            { env with retType = 
+                        (env.retType, retType1)
+                        ||> Option.map2 (fun (ty, r) (_, r1) -> 
+                            let r2 = 
+                                match retType2 with 
+                                | Some (_, r2) -> r2 
+                                | None -> false
+                            
+                            ty, r || (r1 && r2)
+                        )  
+            }
 
         | Loop (DoWhile (stmt, (_, epos as expr))), _
         | Loop (While (_, epos as expr, stmt)), _ ->
@@ -461,7 +491,7 @@ module rec TypedAst =
 
         | Return expr, pos -> 
             match env.retType with
-            | Some (retType, isReturned) ->
+            | Some (retType, _) ->
                 match getExprType env (expr, pos) with
                 | Some ty -> 
                     if retType <> ty then 
@@ -469,9 +499,6 @@ module rec TypedAst =
                 | _ -> 
                     ()
                 
-                if isReturned then
-                    do reportTypeErrorAt pos "All code paths have return value before this point"
-
                 { env with retType = Some (retType, true) }
 
             | None ->

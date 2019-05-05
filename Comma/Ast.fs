@@ -7,7 +7,7 @@ type Positions = Position * Position
 
 type InitExpr =
     | StructInit of string * ((string * Positions) * ExprPos) list
-    | ArrayInit of string * int
+    | ArrayInit of string * ExprPos
 
 and AssignableExpr =
     | Identifier of string

@@ -86,10 +86,6 @@ paramDecl:
     | Id Colon typeId
         { Option.map (fun ty -> ($1, ty), enpos parseState 1 3) $3 }
 
-    // | Id error typeId
-    //     { reportParseErrorAt (opos parseState 2) "Missing ':' in parameter declaration"
-    //       $1, $3 }
-
     | error
         { reportParseErrorAt (pos parseState 1) "Invalid parameter declaration"
           None }
@@ -98,17 +94,9 @@ paramDecl:
 paramList:
     | paramDecl Comma paramList
         { (Option.toList $1) @ $3 }
-    
-    // | error Comma paramList
-    //     { reportParseErrorAt (lpos parseState 1) "Invalid parameter declaration"
-    //       $3 }
 
     | paramDecl
         { Option.toList $1 }
-
-    // | error
-    //     { reportParseErrorAt (pos parseState 1) "Invalid parameter declaration"
-    //       [] }
 
 
 assoc:
@@ -131,7 +119,7 @@ assocList:
 /* ------------------------ */
 
 varDecl:
-    | Var paramDecl Eq expr         
+    | Var paramDecl Eq expr 
         { $2 |> Option.fold (fun _ decl -> VarDecl (decl, $4)) Empty }
 
     | Var paramDecl Eq error
@@ -155,34 +143,54 @@ ifElse:
         { IfElse ($2, $3, None) }
 
 
+atomicStmt:
+    | sideEffectExpr
+        { SideEffect $1 }
+
+    | varDecl
+        { $1 }
+
+    | Break
+        { Ast.Stmt.Break }
+
+    | Continue
+        { Ast.Stmt.Continue }
+
+    | GoTo Id
+        { Ast.Stmt.GoTo $2 }
+
+    | Return expr
+        { Ast.Stmt.Return (fst $2) }
+    
+    | Return error         
+        { reportParseErrorAt (rpos parseState 2) "Invalid return value"
+          Empty }
+
+    | GoTo error
+        { reportParseErrorAt (rpos parseState 2) "Invalid label identifier"
+          Empty }
+
+    | error
+        { reportParseErrorAt (pos parseState 1) "Invalid statement"
+          Empty }
+
+
 stmt:
     | Semicolon
         { Empty, pos parseState 1 }
 
-    | sideEffectExpr Semicolon
-        { SideEffect $1, enpos parseState 1 2 }
-
-    | varDecl Semicolon             
+    | atomicStmt Semicolon
         { $1, enpos parseState 1 2 }
+
+    | atomicStmt error
+        { reportParseErrorAt (rpos parseState 2) "Invalid statement or missing semicolon"
+          $1, enpos parseState 1 2 }
 
     | Id Colon
         { Label $1, enpos parseState 1 2 }
 
-    | Break Semicolon
-        { Ast.Stmt.Break, enpos parseState 1 2 }
-
-    | Continue Semicolon
-        { Ast.Stmt.Continue, enpos parseState 1 2 }
-
     | stmtBlock
         { StmtBlock $1, pos parseState 1 }
-
-    | GoTo Id Semicolon
-        { Ast.Stmt.GoTo $2, enpos parseState 1 3 }
-    
-    | Return expr Semicolon         
-        { let expr, _ = $2
-          Ast.Stmt.Return expr, enpos parseState 1 3 }
 
     | whileLoop                     
         { Loop $1, pos parseState 1 }
@@ -190,17 +198,9 @@ stmt:
     | ifElse                        
         { $1, pos parseState 1 }
 
-    | Return error         
-        { reportParseErrorAt (rpos parseState 2) "Invalid return value"
-          Empty, enpos parseState 1 2 }
-
-    | GoTo error
-        { reportParseErrorAt (rpos parseState 2) "Invalid label identifier"
-          Empty, enpos parseState 1 2 }
-
-    | error
-        { reportParseErrorAt (pos parseState 1) "Invalid statement at or before of this point"
-          Empty, pos parseState 1 }
+    // | error
+    //     { reportParseErrorAt (pos parseState 1) "Invalid statement at or before of this point"
+    //       Empty, pos parseState 1 }
 
 
 stmtList:
@@ -228,12 +228,13 @@ structOrArrayInit:
     | New Id LBrace assocList RBrace    
         { StructInit ($2, $4) }    // type init
     
-    | New Id LBrack LitInt RBrack
+    | New Id LBrack expr RBrack
         { ArrayInit ($2, $4) }
 
     | New Id LBrack error RBrack
-        { reportParseErrorAt (opos parseState 4) "Expected integer array size"
-          ArrayInit ($2, 0) }
+        { let position = opos parseState 4
+          reportParseErrorAt position "Expected integer array size"
+          ArrayInit ($2, (Integer 0, position)) }
 
 assignable:
     | Id
@@ -298,10 +299,6 @@ expr:
     | sideEffectExpr
         { Ast.Expr.SideEffect $1, pos parseState 1 }
 
-    // | error %prec Colon
-    //     { let position = pos parseState 1
-    //       reportParseErrorAt position "unknown expression"
-    //       ErrorExp, position }
 
 exprList:
     | expr Comma exprList           { $1 :: $3 }
@@ -317,10 +314,6 @@ stmtBlock:
     | LBrace stmtList RBrace
         { $2 }
 
-    // | LBrace error RBrace
-    //     { reportParseErrorAt (opos parseState 2) "Invalid parameters list in statement block"
-    //       [] }
-
     | LBrace RBrace
         { [] }
     
@@ -333,10 +326,6 @@ funcParamBlock:
     | LParen paramList RParen
         { $2 }
 
-    // | LParen error RParen
-    //     { reportParseErrorAt (opos parseState 2) "Invalid parameters list"
-    //       [] }
-
     | LParen RParen
         { [] }
 
@@ -348,10 +337,6 @@ funcParamBlock:
 structParamBlock:
     | LBrace paramList RBrace
         { $2 }
-
-    // | LBrace error RBrace
-    //     { reportParseErrorAt (opos parseState 2) "Invalid parameters list"
-    //       [] }
 
     | LBrace error Eof
         { reportParseErrorAt (opos parseState 2) "Missing '}' in parameters block"
