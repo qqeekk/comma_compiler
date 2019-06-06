@@ -68,7 +68,7 @@ let main _ =
                 else
                     ()
                 
-                codegenProgram env tree
+                info ("Compiled source code:\n" + codegenProgram env tree)
             )
         | _ ->  
             Error "Wrong args"

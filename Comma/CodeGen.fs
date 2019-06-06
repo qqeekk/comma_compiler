@@ -31,6 +31,9 @@ module LLVMNameTracker =
     let makeFuncName : string -> LLVMVar = 
         (+) "@"
 
+    let makeFunParam : LLVMType -> LLVMVar -> _ = 
+        sprintf "%s %s"
+
 module rec LLVMTypeProvider = 
     let makeRef : LLVMType -> LLVMType = 
         sprintf "%s*"
@@ -92,7 +95,7 @@ let codegenFuncProto types name (args, (retType, _) as __ : FunSignature) : LLVM
             llvmType, llvmName
         ]
 
-    let argDecls = llvmArgs |> List.map ((<||) (sprintf "%s %s"))
+    let argDecls = llvmArgs |> List.map (fun p -> p ||> LLVMNameTracker.makeFunParam)
 
     let retTy = LLVMTypeProvider.mapType retType types
     let llvmFunc = LLVMNameTracker.makeFuncName name
@@ -120,8 +123,8 @@ let codegenFunc ((_, types) as env) { name = name; signature = sgn, _; body = bo
 
 
 let codegenDecl env = function
-    | FunDecl decl, _ -> codegenFunc env decl |> printfn "%s"
-    | _ -> ()
+    | FunDecl decl -> codegenFunc env decl
+    | _ -> ""
 
-let codegenProgram env =
-    List.iter (codegenDecl env)
+let codegenProgram env : Program -> LLVMCode =
+    List.fold (fun code (decl, _) -> code +> newline false +> codegenDecl env decl ) "; llvm 3.8.1"
