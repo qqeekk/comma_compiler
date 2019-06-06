@@ -93,11 +93,11 @@ and singleLineString pos state = parse
 | _                         { singleLineString pos (state.Append (lexeme lexbuf)) lexbuf }
 
 {
-let getToken (logger: Logger) (lexbuf: LexBuffer<_>) =
+let getToken (lexbuf: LexBuffer<_>) =
     match (tokenize lexbuf) with
     | Ok tok -> 
-        trace logger (string tok); tok
+        trace (string tok); tok
     | Result.Error (text, tok) -> 
-        Ast.handleError <| TaggedMessage (Lexing, (lexbuf.StartPos, lexbuf.EndPos), text)
-        info logger (sprintf "[RECOVER] %s" (string tok)); tok
+        reportErrorAt Lexing (lexbuf.StartPos, lexbuf.EndPos) text
+        info (sprintf "[RECOVER] %s" (string tok)); tok
 }

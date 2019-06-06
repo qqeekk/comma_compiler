@@ -1,112 +1,17 @@
 ﻿namespace Comma
 open Ast
-
-type Symbol = string
-
-type Ty = 
-    | Int
-    | String
-    | Boolean
-    | Float
-    | Record of Symbol * Variables
-    override __.ToString() =
-        match __ with
-        | Int -> "Int"
-        | String -> "String"
-        | Boolean -> "Bool"
-        | Float -> "Float"
-        | Record (name, _) -> name
-
-and TyEntry =
-    | Single of Ty
-    | Array of Ty
-    override __.ToString() = 
-        match __ with
-        | Single ty -> ty.ToString()
-        | Array ty -> sprintf "[%O]" ty
-
-and Variables = Map<Symbol, TyEntry>
-
-type Signature = Symbol * TyEntry list * TyEntry
-type Functions = Map<Symbol, Signature>
-type Labels = Map<Symbol, Variables>
-type Types = Map<Symbol, Ty>
-
-[<AutoOpen>]
-module TypeChecking = 
-    let reportTypeErrorAt = reportErrorAt TypeCheck
-
-module Variables =
-    let lookup name (vars: Variables) = 
-        match Map.tryFind name vars with
-        | Some x -> Ok x
-        | None -> Error ("No such variable found: " + name)
-
-    let enter  : _ -> _ -> Variables -> Variables = Map.add
-    let default' : Variables = Map.empty
-
-module Labels =
-    let lookup name (labels: Labels) = 
-        match Map.tryFind name labels with
-        | Some venv -> Ok venv
-        | None -> Error ("No such label found: " + name)
-
-    let enter name env (labels : Labels) = 
-        if Map.containsKey name labels then
-            Error (sprintf "Label with name %s is already declared in this scope" name)
-        else
-            Map.add name env labels |> Ok
-    
-    let default' : Labels = Map.empty
-
-module Functions =
-    let lookup name (funcs: Functions) = 
-        match Map.tryFind name funcs with
-        | Some name -> Ok name
-        | None -> Error ("No such function found: " + name)
-
-    let enter ((name, _, _) as signature) funcs =
-        if Map.containsKey name funcs then
-            Error (sprintf "Function with name %s is already declared" name)
-        else
-            Map.add name signature funcs |> Ok
-    
-    let default' : Functions =
-        [ "print_int", [Single Int], Single Int
-          "print_str", [Single String], Single Int
-          "print_flt", [Single Float], Single Int
-          "print_bln", [Single Boolean], Single Int]
-        |> List.fold (fun map ty -> match enter ty map with | Ok t -> t | _ -> map) Map.empty
-
-module Types = 
-    let lookup typeId (map:Types) = 
-        let map trans sym =
-            match Map.tryFind sym map with
-            | Some ty -> Ok (trans ty)
-            | None -> Error ("No such type found: " + sym)
-        
-        match typeId with
-        | Ast.Single ty -> map (Single) ty
-        | Ast.Array ty -> map (Array) ty
-
-    let enter ty (types: Types) =
-        let key : Symbol = ty.ToString()
-
-        if Map.containsKey key types then
-            Error (sprintf "Type %s is already declared" key)
-        else
-            Ok (Map.add key ty types)
-
-    let default' = 
-        [Int; String; Boolean; Float] 
-        |> List.fold (fun map ty -> match enter ty map with Ok t -> t | _ -> map) Map.empty
-   
+open NameHelpers
 
 module rec TypedAst =
     open FSharp.Text.Lexing
+    let reportTypeErrorAt = 
+        ErrorLogger.reportErrorAt ErrorLogger.TypeCheck
 
-    let expectedTypes (types: TyEntry seq) = "Expected types: " + (String.concat " | " (Seq.map string types))
-    let unmatchedTypes : TyEntry -> TyEntry -> _ = sprintf "Expected type %O but given %O"
+    let expectedTypes (types: TyEntry seq) = 
+        "Expected types: " + (String.concat " | " (Seq.map string types))
+    
+    let unmatchedTypes : TyEntry -> TyEntry -> _ = 
+        sprintf "Expected type %O but given %O"
     
     type Environment = 
         { labels : Labels 
@@ -117,10 +22,10 @@ module rec TypedAst =
           retType : (TyEntry * bool) option
         }
 
-    let default' =
-        { labels = Labels.default'
-          types = Types.default'
-          funcs = Functions.default'
+    let default' funcs types =
+        { types = types
+          funcs = funcs
+          labels = Labels.default'
           vars = Variables.default'
           loop = false
           retType = None
@@ -138,7 +43,6 @@ module rec TypedAst =
 
     let getBinaryExpType env left right =
             getExprType env left, getExprType env right
-
 
     let getSideEffectExprType env = function
         | Assign (left, (right, rpos)), _ ->
@@ -232,7 +136,6 @@ module rec TypedAst =
                 do reportTypeErrorAt pos m
                 None
 
-
     let getAssignableExprType env : AssignableExprPos -> _ = function
         | Identifier id, pos -> 
             match Variables.lookup id (env.vars) with
@@ -258,7 +161,6 @@ module rec TypedAst =
             | _ ->
                 None
                 
-
         | FieldAccess ((_, epos) as expr, id), pos ->
             match getExprType env expr with
             | Some (Single (Record (_, fields))) -> 
@@ -274,7 +176,6 @@ module rec TypedAst =
 
             | _ -> 
                 None
-        
 
     let rec getExprType env : ExprPos -> TyEntry option = function
         | Expr.Assignable expr, pos -> getAssignableExprType env (expr, pos)
@@ -391,7 +292,6 @@ module rec TypedAst =
             | _ -> 
                 None
 
-
     let transStmt env = function
         | VarDecl (((pname, (ty, typos)), _), expr), pos ->
             let param = 
@@ -422,7 +322,6 @@ module rec TypedAst =
             | Error m ->
                 reportTypeErrorAt pos m
                 env
-
 
         | GoTo l, pos -> 
             match Labels.lookup l (env.labels) with
@@ -505,58 +404,65 @@ module rec TypedAst =
                 reportTypeErrorAt pos "Only functions can return values"
                 env
             
-            
-    let transDecl env : DeclPos -> _ = function
+    let transDecl (funcs, types) : DeclPos -> _ = function
         | TypeDecl ty, pos -> 
-            let pars' = transParamList (env.types) (ty.fields)
-            let venv' = List.fold (fun venv' (name, ty) -> Variables.enter name ty venv') (env.vars) pars'
+            let pars' = transParamList types (ty.fields)
+            
+            let venv' = List.fold (fun venv' (name, ty) -> 
+                Variables.enter name ty venv') Variables.default' pars'
             
             let record = Record (ty.name, venv')
 
-            match  Types.enter record (env.types) with
+            match Types.enter record types with
             | Ok t ->
-                { env with types = t }
+                funcs, t
             
             | Error m ->
                 reportTypeErrorAt pos m
-                env
+                funcs, types
 
         | FunDecl { signature = (pars, (ty, tyPos)), _; name = name; body = body }, pos -> 
-            let pars' = transParamList (env.types) pars
+            let pars' = transParamList types pars
             
-            match Types.lookup ty (env.types) with
+            match Types.lookup ty types with
             | Ok ty -> 
                 let pTypes = List.map (snd) pars'
 
                 let venv' = List.fold (fun venv' (name, ty) -> 
-                    Variables.enter name ty venv') (env.vars) pars'
+                    Variables.enter name ty venv') Variables.default' pars'
                 
-                let env' = { env with vars = venv'
-                                      retType = Some (ty, false) }
+                let env' = { default' funcs types with vars = venv'
+                                                       retType = Some (ty, false) }
                 
                 let (_, isReturned) = Option.get (List.fold (transStmt) env' body).retType
                 
                 if not isReturned then 
                     do reportTypeErrorAt pos "Not all code paths return a value"
                 
-                match Functions.enter (name, pTypes, ty) (env.funcs) with
+                match Functions.enter (name, pTypes, ty) funcs with
                 | Ok fs -> 
-                    { env with funcs = fs }
+                    fs, types
 
                 | Error m -> 
                     do reportTypeErrorAt pos m
-                    env            
+                    funcs, types
             
             | Error m -> 
                 do reportTypeErrorAt tyPos m
-                env
+                funcs, types
     
     let transProgram program = 
-        let default_pos = Position.Empty, Position.Empty
+        let defaultPos = Position.Empty, Position.Empty
         
-        let env = List.fold (transDecl) default' program
+        let scope = Functions.default', Types.default'
 
-        match Functions.lookup "main" env.funcs with
+        let (fs', _) as scope' = List.fold (transDecl) scope program
+
+        match Functions.lookup "main" fs' with
         | Ok (_, [], Single Int) -> ()
-        | Ok _ -> reportTypeErrorAt default_pos "main function should have no parameters and Int return type"
-        | Error m -> reportTypeErrorAt default_pos m
+        | Ok _ -> 
+            reportTypeErrorAt defaultPos "main function should have no parameters and Int return type"
+        | Error m -> 
+            reportTypeErrorAt defaultPos m
+
+        scope'

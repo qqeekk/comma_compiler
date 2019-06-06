@@ -16,9 +16,11 @@
     </FsYacc>
     <FsLex Include="Lexer.fsl" />
     <Compile Include="Ast.fs" />
+    <Compile Include="ErrorLogger.fs" />
+    <Compile Include="NameHelpers.fs" />
     <Compile Include="AstSerializer.fs" />
     <Compile Include="TypedAst.fs" />
-    <Compile Include="ErrorLogger.fs" />
+    <Compile Include="CodeGen.fs" />
     <Compile Include="Parser.fsi" />
     <Compile Include="Parser.fs" />
     <Compile Include="Lexer.fs" />
@@ -27,6 +29,7 @@
 
   <ItemGroup>
     <PackageReference Include="FsLexYacc" Version="9.0.2" />
+    <PackageReference Include="LLVMSharp" Version="5.0.0" />
   </ItemGroup>
 
   <ItemGroup>
