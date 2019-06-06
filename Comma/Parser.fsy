@@ -1,9 +1,12 @@
-﻿// This is an empty parser. 
-%{
+﻿%{
+open FSharp.Text.Parsing
+open Ast
+open Comma.ErrorLogger
 
+let reportParseErrorAt = Ast.reportErrorAt Parsing
 %}
 
-%start parse
+%start program
 
 // Token definitions
 %token <string> Id
@@ -13,16 +16,371 @@
 %token <bool> LitBool
 %token Plus Minus Asterisk LSlash Eq Greater Less GreaterEq LessEq EqEq BangEq
 %token AmpAmp BarBar Bang LParen RParen LBrace RBrace LBrack RBrack Semicolon Colon RArrow Dot Comma 
-%token While Do GoTo Break Continue If Else Func Return Var Struct
+%token While Do GoTo Break Continue If Else Func Return Var Struct New
 
 /* These are artificial */
 %token Eof
 %token <string> LexFailure 
+%token UMinus
 
-%type <unit> parse
+%type <Ast.Program> program
+%type <Ast.DeclPos option> typeDecl funDecl
+%type <Ast.TypeIdPos option> typeId
+%type <Ast.Stmt> varDecl ifElse
+%type <Ast.StmtPos> stmt
+%type <Ast.LoopStmt> whileLoop
+%type <Ast.ExprPos> expr highPrecExpr
+%type <Ast.InitExpr> structOrArrayInit
+%type <Ast.AssignableExpr> assignable
+%type <Ast.SideEffectExpr> sideEffectExpr
+
+%left Comma Semicolon
+%right Eq
+%left BarBar
+%left AmpAmp
+%left EqEq BangEq
+%left Greater GreaterEq Less LessEq
+%left Plus Minus
+%left Asterisk LSlash
+%right Bang UMinus UPlus
+%left LBrace RBrace LParen RParen LBrack RBrack Dot
+%left Else
 
 %%
-parse: 
-	| {()}
+
+program:
+    | Eof
+        { [] }
+
+    | error program
+        { reportParseErrorAt (lpos parseState 1) "Invalid tokens on a top level"
+          $2 }
+
+    | typeDecl program
+        { (Option.toList $1) @ $2 }
+    
+    | funDecl program
+        { (Option.toList $1) @ $2 }
+    
+
+typeId:
+    | Id
+        { Some (Single $1, pos parseState 1) }
+    
+    | LBrack Id RBrack
+        { Some (Array $2, enpos parseState 1 3 ) }
+
+    | LBrack error
+        { reportParseErrorAt (rpos parseState 2) "Missing ']' in type declaration"
+          None }
+
+    | LBrack error RBrack
+        { reportParseErrorAt (opos parseState 2) "Missing identifier in type declaration"
+          None }
+
+
+paramDecl:
+    | Id Colon typeId
+        { Option.map (fun ty -> ($1, ty), enpos parseState 1 3) $3 }
+
+    | error
+        { reportParseErrorAt (pos parseState 1) "Invalid parameter declaration"
+          None }
+    
+
+paramList:
+    | paramDecl Comma paramList
+        { (Option.toList $1) @ $3 }
+
+    | paramDecl
+        { Option.toList $1 }
+
+
+assoc:
+    | Id Eq expr                    
+        { Some (($1, pos parseState 1), $3) }
+
+    | error
+        { reportParseErrorAt (pos parseState 1) "Invalid association"
+          None }
+
+
+assocList:
+    | assoc Comma assocList         { (Option.toList $1) @ $3 }
+    | assoc                         { Option.toList $1 }
+    |                               { [] }
+
+
+/* ------------------------ */
+/* ------ statements ------ */
+/* ------------------------ */
+
+varDecl:
+    | Var paramDecl Eq expr 
+        { $2 |> Option.fold (fun _ decl -> VarDecl (decl, $4)) Empty }
+
+    | Var paramDecl Eq error
+        { let position = rpos parseState 4
+          reportParseErrorAt position "Unknown expression on the right side of the assignment"
+          $2 |> Option.fold (fun _ decl -> VarDecl (decl, (ErrorExp, position))) Empty }
+
+whileLoop:
+    | While highPrecExpr stmt
+        { Ast.LoopStmt.While ($2, $3) }
+
+    | Do stmt While highPrecExpr Semicolon 
+        { DoWhile ($2, $4) }
+
+
+ifElse:
+    | If highPrecExpr stmt Else stmt 
+        { IfElse ($2, $3, Some $5) }
+
+    | If highPrecExpr stmt 
+        { IfElse ($2, $3, None) }
+
+
+atomicStmt:
+    | sideEffectExpr
+        { SideEffect $1 }
+
+    | varDecl
+        { $1 }
+
+    | Break
+        { Ast.Stmt.Break }
+
+    | Continue
+        { Ast.Stmt.Continue }
+
+    | GoTo Id
+        { Ast.Stmt.GoTo $2 }
+
+    | Return expr
+        { Ast.Stmt.Return (fst $2) }
+    
+    | Return error         
+        { reportParseErrorAt (rpos parseState 2) "Invalid return value"
+          Empty }
+
+    | GoTo error
+        { reportParseErrorAt (rpos parseState 2) "Invalid label identifier"
+          Empty }
+
+
+stmt:
+    | Semicolon
+        { Empty, pos parseState 1 }
+
+    | atomicStmt Semicolon
+        { $1, enpos parseState 1 2 }
+
+    | atomicStmt error
+        { reportParseErrorAt (rpos parseState 2) "Missing semicolon"
+          $1, enpos parseState 1 2 }
+
+    | error Semicolon
+        { reportParseErrorAt (lpos parseState 1) "Invalid statement"
+          Empty, pos parseState 1 }
+
+    | Id Colon
+        { Label $1, enpos parseState 1 2 }
+
+    | stmtBlock
+        { StmtBlock $1, pos parseState 1 }
+
+    | whileLoop                     
+        { Loop $1, pos parseState 1 }
+    
+    | ifElse                        
+        { $1, pos parseState 1 }
+
+
+stmtList:
+    | stmt stmtList                 
+        { match $1 with (Empty, _) -> $2 | _ -> $1 :: $2 }
+        
+    | stmt                          
+        { match $1 with (Empty, _) -> [] | _ -> $1 :: [] }
+
+
+/* ------------------------ */
+/* ------ expressions ----- */
+/* ------------------------ */
+
+highPrecExpr:
+    | LParen expr RParen
+        { $2 } 
+
+    | LParen error RParen
+        { reportParseErrorAt (opos parseState 2) "Invalid expression"
+          ErrorExp, enpos parseState 1 3 }
+
+
+structOrArrayInit:
+    | New Id LBrace assocList RBrace    
+        { StructInit ($2, $4) }    // type init
+    
+    | New Id LBrack expr RBrack
+        { ArrayInit ($2, $4) }
+
+    | New Id LBrack error RBrack
+        { let position = opos parseState 4
+          reportParseErrorAt position "Expected integer array size"
+          ArrayInit ($2, (Integer 0, position)) }
+
+assignable:
+    | Id
+        { Identifier $1 }
+
+    | expr Dot Id
+        { FieldAccess ($1, $3) }
+
+    | expr LBrack expr RBrack       
+        { ArrayIndex ($1, $3) }
+
+
+sideEffectExpr:
+    | structOrArrayInit
+        { InitExpr $1 }
+
+    | Id LParen exprList RParen
+        { FuncApp ($1, $3) }    // funcall
+    
+    | Id LParen error RParen
+        { reportParseErrorAt (enpos parseState 2 4) "Ivalid expression list"
+          FuncApp ($1, []) }    // funcall
+
+    | assignable Eq expr
+        { Assign (($1, pos parseState 1), $3) }    // assign
+    
+    | assignable Eq error
+        { let position = rpos parseState 3
+          reportParseErrorAt position "Unknown expression on the right side of the assignment"
+          Assign (($1, pos parseState 1), (ErrorExp, position)) }    // assign
+    
+
+expr:
+    // literals and constructors
+    | LitInt                        { Integer $1, pos parseState 1 }
+    | LitFloat                      { Float $1, pos parseState 1 }
+    | LitString                     { String $1, pos parseState 1 }
+    | LitBool                       { Boolean $1, pos parseState 1 }
+    | highPrecExpr                  { $1 }
+    | assignable                    { Assignable $1, pos parseState 1 }
+
+    // unary 
+    | Bang expr                     
+        { let expr, _ = $2
+          Neg expr, enpos parseState 1 2 }
+
+    | Minus expr %prec UMinus       
+        { let expr, _ = $2
+          Ast.Expr.UMinus expr, enpos parseState 1 2 }
+    
+    // operators
+    | expr Plus expr                { Add ($1, $3), enpos parseState 1 3 }
+    | expr Minus expr               { Sub ($1, $3), enpos parseState 1 3 }
+    | expr Asterisk expr            { Mul ($1, $3), enpos parseState 1 3 }
+    | expr LSlash expr              { Div ($1, $3), enpos parseState 1 3 }
+    | expr EqEq expr                { Equals ($1, $3), enpos parseState 1 3 }
+    | expr BarBar expr              { Or ($1, $3), enpos parseState 1 3 }
+    | expr AmpAmp expr              { And ($1, $3), enpos parseState 1 3 }
+    | expr BangEq expr              { Neg (Equals ($1, $3)), enpos parseState 1 3 }
+    | expr GreaterEq expr           { Ast.Expr.GreaterEq ($1, $3), enpos parseState 1 3 }
+    | expr Greater expr             { Ast.Expr.Greater ($1, $3), enpos parseState 1 3 }
+    | expr LessEq expr              { Ast.Expr.GreaterEq ($3, $1), enpos parseState 1 3 }
+    | expr Less expr                { Ast.Expr.Greater ($3, $1), enpos parseState 1 3 } 
+
+    // expressions that can have side-effect
+    | sideEffectExpr
+        { Ast.Expr.SideEffect $1, pos parseState 1 }
+
+
+exprList:
+    | expr Comma exprList           { $1 :: $3 }
+    | expr                          { [$1] }
+    |                               { [] }
+
+
+/* ------------------------ */
+/* -------- blocks -------- */
+/* ------------------------ */
+
+stmtBlock:
+    | LBrace stmtList RBrace
+        { $2 }
+
+    | LBrace error RBrace
+        { reportParseErrorAt (inpos parseState 1 3) "Invalid statement block"
+          [] }
+
+    | LBrace RBrace
+        { [] }
+    
+    | LBrace error Eof
+        { reportParseErrorAt (opos parseState 2) "Missing '}' in statement block"
+          [] }
+    
+
+funcParamBlock:
+    | LParen paramList RParen
+        { $2 }
+
+    | LParen RParen
+        { [] }
+
+    | LParen error Eof
+        { reportParseErrorAt (rpos parseState 2) "Missing ')' in parameters block"
+          [] }
+
+
+structParamBlock:
+    | LBrace paramList RBrace
+        { $2 }
+
+    | LBrace error Eof
+        { reportParseErrorAt (opos parseState 2) "Missing '}' in parameters block"
+          [] }
+
+
+/* ------------------------ */
+/* -- types and functions - */
+/* ------------------------ */
+
+typeDecl:
+    | Struct Id structParamBlock
+        { Some (TypeDecl { name = $2; fields = $3 }, enpos parseState 1 3 ) }
+
+    | Struct error structParamBlock
+        { reportParseErrorAt (opos parseState 2) "Invalid identifier in structure declaration"
+          None }
+
+
+funTypeSignature:
+    | funcParamBlock RArrow typeId
+        { Option.map (fun ty -> ($1, ty), enpos parseState 1 3) $3 }
+
+    | funcParamBlock error
+        { reportParseErrorAt (rpos parseState 2) "Invalid return type declaration."
+          None }
+            
+
+funDecl: 
+    | Func Id funTypeSignature stmtBlock
+        { $3 |> Option.map (fun expr -> 
+            FunDecl { name = $2; signature = expr; body = $4 }, enpos parseState 1 4 ) }
+
+    | Func Id error stmtBlock
+        { reportParseErrorAt (opos parseState 3) "Invalid function signature"
+          None }
+
+    | Func error funTypeSignature stmtBlock
+        { reportParseErrorAt (opos parseState 2) "Invalid function identifier"
+          None }
+
+    | Func error stmtBlock
+        { reportParseErrorAt (opos parseState 2) "Invalid function declaration"
+          None }
 
 %%

@@ -12,9 +12,12 @@
 
   <ItemGroup>
     <FsYacc Include="Parser.fsy">
-      <OtherFlags>--module Parser</OtherFlags>
+      <OtherFlags>-v --module Parser</OtherFlags>
     </FsYacc>
     <FsLex Include="Lexer.fsl" />
+    <Compile Include="Ast.fs" />
+    <Compile Include="AstSerializer.fs" />
+    <Compile Include="TypedAst.fs" />
     <Compile Include="ErrorLogger.fs" />
     <Compile Include="Parser.fsi" />
     <Compile Include="Parser.fs" />
@@ -23,7 +26,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FsLexYacc" Version="7.0.6" />
+    <PackageReference Include="FsLexYacc" Version="9.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="4.3.4" />
   </ItemGroup>
 
 </Project>
