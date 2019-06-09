@@ -449,8 +449,14 @@ let codegenDecl = function
 
     | TypeDecl { name = name } -> 
         let lty = LTypes.lentry (Single name)
+        let basety = 
+            match lty with
+            | Val (STp name) -> Val (ST name)
+            | _ -> exit 1
+
         let fields = LTypes.lmeta lty
-        LTypes.stringify lty %= "type {"
+
+        LTypes.stringify basety %= "type {"
         +> Seq.fold (fun code (KeyValue (_, (_, ty))) -> 
             code +> nl true +> LTypes.stringify ty + "," ) "" fields
         +> nl false +> "}"
