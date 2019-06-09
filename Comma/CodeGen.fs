@@ -9,6 +9,7 @@ let constant = """
 """
 
 let footer = """
+; library code
 define i32 @main(i32, i8**) {
     %main.ret.ptr = alloca i32
     call void @.main(i32* %main.ret.ptr)

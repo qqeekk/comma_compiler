@@ -68,7 +68,11 @@ let main _ =
                     saveAsXml tree
                     info "Saved to ast.xml"
                 
-                info ("Compiled source code:\n" + codegenProgram tree)
+                let llvm = codegenProgram tree
+                info ("Compiled source code:\n" + llvm)
+                
+                use file = File.CreateText "program.ll"
+                file.Write llvm
             )
         | _ ->  
             Error "Wrong args"
