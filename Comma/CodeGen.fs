@@ -455,10 +455,12 @@ let codegenDecl = function
             | _ -> exit 1
 
         let fields = LTypes.lmeta lty
+        let decls = 
+            Seq.map (fun (KeyValue (_, (_, ty))) -> 
+                nl true +> LTypes.stringify ty) fields
 
         LTypes.stringify basety %= "type {"
-        +> Seq.fold (fun code (KeyValue (_, (_, ty))) -> 
-            code +> nl true +> LTypes.stringify ty + "," ) "" fields
+        +> System.String.Join(",", decls)
         +> nl false +> "}"
         +> nl false
 
