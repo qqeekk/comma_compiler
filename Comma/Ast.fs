@@ -27,10 +27,8 @@ and Expr =
     | String of string
     | Assignable of AssignableExpr
     | SideEffect of SideEffectExpr
-
     | Neg of Expr
     | UMinus of Expr
-
     | Add of ExprPos * ExprPos
     | Sub of ExprPos * ExprPos
     | Mul of ExprPos * ExprPos
@@ -71,9 +69,16 @@ and LoopStmt =
 
 type FunSignature = ParamPos list * TypeIdPos
 
-type FunDecl = { name : string; signature : FunSignature * Positions; body : StmtPos list }
+type FunDecl = { 
+    name : string
+    signature : FunSignature * Positions
+    body : StmtPos list 
+}
 
-type TypeDecl = { name : string; fields : ParamPos list }
+type TypeDecl = { 
+    name : string
+    fields : ParamPos list
+}
 
 type Decl =
     | FunDecl of FunDecl

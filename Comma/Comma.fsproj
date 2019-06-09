@@ -18,6 +18,7 @@
     <Compile Include="Ast.fs" />
     <Compile Include="ErrorLogger.fs" />
     <Compile Include="NameHelpers.fs" />
+    <Compile Include="LLVMHelpers.fs" />
     <Compile Include="AstSerializer.fs" />
     <Compile Include="TypedAst.fs" />
     <Compile Include="CodeGen.fs" />

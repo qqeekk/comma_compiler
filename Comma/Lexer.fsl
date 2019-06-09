@@ -14,11 +14,11 @@ let setNextLine (lexbuf:LexBuffer<_>) = lexbuf.EndPos <- lexbuf.EndPos.NextLine
 
 let tryInt32 lexeme =
     try Ok (LitInt (int lexeme))
-    with _ -> Result.Error (integerOverflow, LitInt 0)
+    with _ -> Result.Error (integerOverflow, LitInt 1)
 
 let tryFloat lexeme =
     try Ok (LitFloat (float lexeme))
-    with _ -> Result.Error (invalidFloat, LitFloat 0.)
+    with _ -> Result.Error (invalidFloat, LitFloat 1.)
 }
 
 let digit = ['0'-'9']

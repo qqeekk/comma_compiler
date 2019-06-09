@@ -27,9 +27,9 @@ and TyEntry =
 and Variables = Map<Symbol, TyEntry>
 
 type Signature = Symbol * TyEntry list * TyEntry
-type Functions = Map<Symbol, Signature>
+//type Functions = Map<Symbol, Signature>
 type Labels = Map<Symbol, Variables>
-type Types = Map<Symbol, Ty>
+//type Types = Map<Symbol, Ty>
 
 //[<AutoOpen>]
 //module TypeChecking = 
@@ -60,52 +60,57 @@ module Labels =
     let default' : Labels = Map.empty
 
 module Functions =
-    let lookup name (funcs: Functions) = 
-        match Map.tryFind name funcs with
-        | Some name -> Ok name
-        | None -> Error ("No such function found: " + name)
+    open System.Collections.Generic
+    let private funcs = Dictionary<Symbol, Signature>()
 
-    let enter ((name, _, _) as signature) funcs =
-        if Map.containsKey name funcs then
+    let lookup name = 
+        match funcs.TryGetValue name with
+        | true, name -> Ok name
+        | false, _ -> Error ("No such function found: " + name)
+
+    let enter ((name, _, _) as signature) =
+        if funcs.ContainsKey name then
             Error (sprintf "Function with name %s is already declared" name)
         else
-            Map.add name signature funcs |> Ok
+            Ok (funcs.[name] <- signature)
     
-    let default' : Functions =
-        [ "print_int", [Single Int], Single Int
-          "print_str", [Single String], Single Int
-          "print_flt", [Single Float], Single Int
-          "print_bln", [Single Boolean], Single Int]
-        |> List.fold (fun map ty -> 
-            match enter ty map with 
-            | Ok t -> t 
-            | _ -> map
-        ) Map.empty
+    let reset () =
+        do funcs.Clear ()
+        do ["print_int", [Single Int], Single Int
+            "print_str", [Single String], Single Int
+            "print_flt", [Single Float], Single Int
+            "print_bln", [Single Boolean], Single Int]
+        |> List.iter (enter >> ignore)
+
+    let all () =
+        funcs |> Seq.map (function KeyValue kvp -> kvp)
 
 module Types = 
-    let lookup typeId (map:Types) = 
+    open System.Collections.Generic
+
+    let private types = Dictionary<Symbol, Ty>()
+
+    let enter ty =
+        let key : Symbol = ty.ToString()
+
+        if types.ContainsKey key then
+            Error (sprintf "Type %s is already declared" key)
+        else
+            Ok (types.[key] <- ty)
+
+    let lookup typeId = 
         let map trans sym =
-            match Map.tryFind sym map with
-            | Some ty -> Ok (trans ty)
-            | None -> Error ("No such type found: " + sym)
+            match types.TryGetValue sym with
+            | true, ty -> Ok (trans ty)
+            | false, _ -> Error ("No such type found: " + sym)
         
         match typeId with
         | Ast.Single ty -> map (Single) ty
         | Ast.Array ty -> map (Array) ty
 
-    let enter ty (types: Types) =
-        let key : Symbol = ty.ToString()
-
-        if Map.containsKey key types then
-            Error (sprintf "Type %s is already declared" key)
-        else
-            Ok (Map.add key ty types)
-
-    let default' = 
-        [Int; String; Boolean; Float] 
-        |> List.fold (fun map ty -> 
-            match enter ty map with 
-            | Ok t -> t 
-            | _ -> map
-        ) Map.empty
-   
+    let reset () = 
+        do types.Clear ()
+        do List.iter (enter >> ignore) [Int; String; Boolean; Float]
+    
+    let all () =
+        types |> Seq.map (function KeyValue kvp -> kvp)

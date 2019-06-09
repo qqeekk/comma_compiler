@@ -23,11 +23,13 @@ let safeOpenFile filename : Result<FileStream, string> =
 
 let compileFromLexbuf (lexbuf:LexBuffer<_>) =
     let parsed = Parser.program (Lexer.getToken) lexbuf
-    TypedAst.transProgram parsed, parsed
+    do TypedAst.transProgram parsed
+    parsed
     
 let saveAsXml parsed =
     use xmlFile = File.Create "ast.xml"
-    (serializeToXml parsed).Save xmlFile
+    let document = serializeToXml parsed
+    do document.Save xmlFile
 
 let compileText (text: string) =
     LexBuffer<_>.FromBytes (encoding.GetBytes text) |> compileFromLexbuf
@@ -61,14 +63,12 @@ let main _ =
             use file = File.CreateText "compile_session.log"
             do ErrorLogger.resetLogger (combine [ consoleLogger; fileLogger file ])
             
-            getTreeOrError sfile |> Result.map (fun (env, tree) ->
+            getTreeOrError sfile |> Result.map (fun tree ->
                 if toXml then 
                     saveAsXml tree
                     info "Saved to ast.xml"
-                else
-                    ()
                 
-                info ("Compiled source code:\n" + codegenProgram env tree)
+                info ("Compiled source code:\n" + codegenProgram tree)
             )
         | _ ->  
             Error "Wrong args"
