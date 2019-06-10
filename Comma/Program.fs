@@ -5,51 +5,78 @@ open FSharp.Text.Lexing
 open Comma
 open AstSerializer
 open System
+open CodeGen
 
 let fileExtensions = [| ".cmm" |]
-let encoding = Encoding.UTF8   
+let encoding = Encoding.UTF8
 
-let safeOpenFile filename : Result<FileStream, string> = 
+let safeOpenFile filename : Result<FileStream, string> =
     match File.Exists filename with
-    | true -> 
+    | true ->
         match Array.contains (Path.GetExtension filename) fileExtensions with
-        | true -> 
+        | true ->
             try Ok (File.OpenRead filename)
             with _ -> Error ("Cannot open a file: " + filename)
         | _ -> Error ("Wrong file format: " + filename)
     | _ -> Error ("File does not exist: " + filename)
 
-
 let compileFromLexbuf (lexbuf:LexBuffer<_>) =
-    use file = File.CreateText "lex.output.txt"
-    let logger = combine [ consoleLogger; debugLogger; fileLogger file ]
-
-    Ast.handleError <- Ast.formatMessage >> error logger
-    let parsed = Parser.program (Lexer.getToken logger) lexbuf
+    let parsed = Parser.program (Lexer.getToken) lexbuf
     do TypedAst.transProgram parsed
+    parsed
     
+let saveAsXml parsed =
     use xmlFile = File.Create "ast.xml"
-    (serializeToXml parsed).Save xmlFile
-
+    let document = serializeToXml parsed
+    do document.Save xmlFile
 
 let compileText (text: string) =
     LexBuffer<_>.FromBytes (encoding.GetBytes text) |> compileFromLexbuf
 
-
-let compileFile filename =
-    match (safeOpenFile filename) with
-    | Ok file    ->
+let compileFile =
+    safeOpenFile >> Result.map (fun file -> 
         use stream = new BinaryReader(file, encoding)
         compileFromLexbuf (LexBuffer<_>.FromBinaryReader stream)
-    | Error text -> 
-        printfn "%s" text
-
+    )
 
 [<EntryPoint>]
 let main _ = 
+    let getTreeOrError =
+        compileFile >> Result.bind (fun ok ->
+            match ErrorLogger.getCompileErrorsTotal() with
+            | 0 -> Ok ok
+            | n -> Error (sprintf "Compile errors: %d" n)
+        )
+
+    let (|ValidArgs|_|) = function
+    | [| file |] -> Some (file, false)
+    | [| file; "-xml" |] -> Some (file, true)
+    | _ -> None
+
     while true do
         do printf "> compile -file "
-        do Console.ReadLine () |> compileFile
-        do printfn ""
+        match Console.ReadLine().Split(" ") with
+        | [| "\\" |] ->
+            exit 0
+        | ValidArgs (sfile, toXml) ->
+            use file = File.CreateText "compile_session.log"
+            do ErrorLogger.resetLogger (combine [ consoleLogger; fileLogger file ])
+            
+            getTreeOrError sfile |> Result.map (fun tree ->
+                if toXml then
+                    saveAsXml tree
+                    info "AST saved to: ast.xml"
+                
+                let llvm = codegenProgram tree
+                use file = File.CreateText "program.ll"
 
+                file.Write llvm
+                info "Compiled source: program.ll"
+            )
+        | _ ->  
+            Error "Wrong args"
+        |> Result.mapError (printfn "%s") 
+        |> ignore
+
+        do printfn ""
     0

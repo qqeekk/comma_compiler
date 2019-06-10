@@ -27,10 +27,8 @@ and Expr =
     | String of string
     | Assignable of AssignableExpr
     | SideEffect of SideEffectExpr
-
     | Neg of Expr
     | UMinus of Expr
-
     | Add of ExprPos * ExprPos
     | Sub of ExprPos * ExprPos
     | Mul of ExprPos * ExprPos
@@ -71,9 +69,16 @@ and LoopStmt =
 
 type FunSignature = ParamPos list * TypeIdPos
 
-type FunDecl = { name : string; signature : FunSignature * Positions; body : StmtPos list }
+type FunDecl = { 
+    name : string
+    signature : FunSignature * Positions
+    body : StmtPos list 
+}
 
-type TypeDecl = { name : string; fields : ParamPos list }
+type TypeDecl = { 
+    name : string
+    fields : ParamPos list
+}
 
 type Decl =
     | FunDecl of FunDecl
@@ -82,22 +87,20 @@ type DeclPos = Decl * Positions
 
 type Program = DeclPos list
 
-type CompileStage = Lexing | Parsing | TypeCheck
+let internal pos (parseState: IParseState) : int -> _ = 
+    parseState.InputRange
 
-type TaggedMessage = TaggedMessage of CompileStage * Positions * string
+let internal inpos (parseState: IParseState) i j = 
+    (parseState.InputEndPosition i, parseState.InputStartPosition j)
 
-let private pretty (pos: Position) = (pos.Line + 1, pos.Column + 1)    
+let internal enpos (parseState: IParseState) i j = 
+    (parseState.InputStartPosition i, parseState.InputEndPosition j)
 
-let formatMessage (TaggedMessage (stage, (pos1, pos2), mes)) =
-    sprintf "[%A] %A - %A: %s" stage (pretty pos1) (pretty pos2) mes
- 
-let internal pos (parseState: IParseState) : int -> _ = parseState.InputRange
-let internal inpos (parseState: IParseState) i j = (parseState.InputEndPosition i, parseState.InputStartPosition j)
-let internal enpos (parseState: IParseState) i j = (parseState.InputStartPosition i, parseState.InputEndPosition j)
+let internal opos (parseState: IParseState) i = 
+    inpos parseState (i-1) (i+1)
 
-let internal opos (parseState: IParseState) i = inpos parseState (i-1) (i+1)
-let internal lpos (parseState: IParseState) i = (parseState.InputStartPosition i, parseState.InputStartPosition (i+1))
-let internal rpos (parseState: IParseState) i = (parseState.InputEndPosition (i-1), parseState.InputEndPosition i)
+let internal lpos (parseState: IParseState) i = 
+    (parseState.InputStartPosition i, parseState.InputStartPosition (i+1))
 
-let mutable internal handleError : TaggedMessage -> unit = ignore
-let reportErrorAt stage range message = handleError (TaggedMessage (stage, range, message))
+let internal rpos (parseState: IParseState) i = 
+    (parseState.InputEndPosition (i-1), parseState.InputEndPosition i)

@@ -14,11 +14,11 @@ let setNextLine (lexbuf:LexBuffer<_>) = lexbuf.EndPos <- lexbuf.EndPos.NextLine
 
 let tryInt32 lexeme =
     try Ok (LitInt (int lexeme))
-    with _ -> Result.Error (integerOverflow, LitInt 0)
+    with _ -> Result.Error (integerOverflow, LitInt 1)
 
 let tryFloat lexeme =
     try Ok (LitFloat (float lexeme))
-    with _ -> Result.Error (invalidFloat, LitFloat 0.)
+    with _ -> Result.Error (invalidFloat, LitFloat 1.)
 }
 
 let digit = ['0'-'9']
@@ -93,11 +93,11 @@ and singleLineString pos state = parse
 | _                         { singleLineString pos (state.Append (lexeme lexbuf)) lexbuf }
 
 {
-let getToken (logger: Logger) (lexbuf: LexBuffer<_>) =
+let getToken (lexbuf: LexBuffer<_>) =
     match (tokenize lexbuf) with
     | Ok tok -> 
-        trace logger (string tok); tok
+        trace (string tok); tok
     | Result.Error (text, tok) -> 
-        Ast.handleError <| TaggedMessage (Lexing, (lexbuf.StartPos, lexbuf.EndPos), text)
-        info logger (sprintf "[RECOVER] %s" (string tok)); tok
+        reportErrorAt Lexing (lexbuf.StartPos, lexbuf.EndPos) text
+        info (sprintf "[RECOVER] %s" (string tok)); tok
 }

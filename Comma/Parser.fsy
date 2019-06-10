@@ -3,7 +3,7 @@ open FSharp.Text.Parsing
 open Ast
 open Comma.ErrorLogger
 
-let reportParseErrorAt = Ast.reportErrorAt Parsing
+let reportParseErrorAt = reportErrorAt Parsing
 %}
 
 %start program

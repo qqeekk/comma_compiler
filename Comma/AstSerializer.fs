@@ -1,5 +1,4 @@
 ﻿module rec AstSerializer
-open System.Xml
 open System.Xml.Linq
 open Ast
 
@@ -109,10 +108,10 @@ let sideEffectNode = function
             )
         ]
 
-    | InitExpr (ArrayInit (name, size)) ->
+    | InitExpr (ArrayInit (name, (size, _))) ->
         xElement "arrayinit" [
             xElement "name" [xText name]
-            xElement "size" [xText size]
+            xElement "size" [exprNode size]
         ]
 
 let rec stmtNode = function
