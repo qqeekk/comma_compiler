@@ -151,13 +151,15 @@ let rec codegenSideEffect = function
     | InitExpr (ArrayInit _) -> exit 1
 
 let rec codegenExpr expr : LCode * string * LTyEntry = 
-    let codegenBinOp ((l, _), (r, _)) instr =
+    let codegenBinOp ((l, _), (r, _)) getRetTy instr =
         let lcode, lval, ltype = codegenExpr l
         let rcode, rval, _ = codegenExpr r
-        let temp = LVars.addTemp ltype
+        
+        let retTy = getRetTy ltype
+        let temp = LVars.addTemp retTy
         
         let code = nl true +> temp %= binop (instr ltype) lval rval
-        lcode +> rcode +> code, temp, ltype
+        lcode +> rcode +> code, temp, retTy
 
     match expr with
     | Expr.Integer n -> 
@@ -180,7 +182,7 @@ let rec codegenExpr expr : LCode * string * LTyEntry =
         code, tempVar, varty
     
     | Expr.Add (l, r) -> 
-        codegenBinOp (l, r) <| fun t ->
+        codegenBinOp (l, r) id <| fun t ->
             match t with
             | Val I32 -> "add "
             | Val D -> "fadd "
@@ -188,7 +190,7 @@ let rec codegenExpr expr : LCode * string * LTyEntry =
             + LTypes.stringify t
             
     | Expr.Sub (l, r) -> 
-        codegenBinOp (l, r) <| fun t ->
+        codegenBinOp (l, r) id <| fun t ->
             match t with
             | Val I32 as t -> "sub "
             | Val D as t -> "fsub "
@@ -196,7 +198,7 @@ let rec codegenExpr expr : LCode * string * LTyEntry =
             + LTypes.stringify t
     
     | Expr.Mul (l, r) -> 
-        codegenBinOp (l, r) <| fun t ->
+        codegenBinOp (l, r) id <| fun t ->
             match t with
             | Val I32 -> "mul " 
             | Val D -> "fmul "
@@ -204,7 +206,7 @@ let rec codegenExpr expr : LCode * string * LTyEntry =
             + LTypes.stringify t
     
     | Expr.Div (l, r) -> 
-        codegenBinOp (l, r) <| fun t ->
+        codegenBinOp (l, r) id <| fun t ->
             match t with
             | Val I32 -> "div " 
             | Val D -> "fdiv "
@@ -260,7 +262,7 @@ let rec codegenExpr expr : LCode * string * LTyEntry =
         code, acc, lbool
     
     | Expr.Equals (l, r) ->
-        codegenBinOp (l, r) <| fun t ->
+        codegenBinOp (l, r) (fun _ -> Val I1) <| fun t ->
             match t with
             | Val (I1 | I8p | I32) -> "icmp eq "
             | Val D -> "fcmp oeq "
@@ -268,7 +270,7 @@ let rec codegenExpr expr : LCode * string * LTyEntry =
             + LTypes.stringify t
 
     | Expr.Greater (l, r) ->
-        codegenBinOp (l, r) <| fun t ->
+        codegenBinOp (l, r) (fun _ -> Val I1) <| fun t ->
             match t with
             | Val I32 -> "icmp sgt "
             | Val D -> "fcmp ogt "
@@ -276,7 +278,7 @@ let rec codegenExpr expr : LCode * string * LTyEntry =
             + LTypes.stringify t
 
     | Expr.GreaterEq (l, r) ->
-        codegenBinOp (l, r) <| fun t ->
+        codegenBinOp (l, r) (fun _ -> Val I1) <| fun t ->
             match t with
             | Val I32 -> "icmp sge "
             | Val D -> "fcmp oge "
