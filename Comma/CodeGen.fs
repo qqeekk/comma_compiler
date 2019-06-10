@@ -164,7 +164,7 @@ let rec codegenExpr expr : LCode * string * LTyEntry =
         "", string n, Val I32
     
     | Expr.Float d -> 
-        "", string d, Val D
+        "", sprintf "%.10f" d, Val D
     
     | Expr.Boolean b -> 
         let b = if b then 1 else 0
