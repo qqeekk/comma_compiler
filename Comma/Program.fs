@@ -8,18 +8,17 @@ open System
 open CodeGen
 
 let fileExtensions = [| ".cmm" |]
-let encoding = Encoding.UTF8   
+let encoding = Encoding.UTF8
 
-let safeOpenFile filename : Result<FileStream, string> = 
+let safeOpenFile filename : Result<FileStream, string> =
     match File.Exists filename with
-    | true -> 
+    | true ->
         match Array.contains (Path.GetExtension filename) fileExtensions with
-        | true -> 
+        | true ->
             try Ok (File.OpenRead filename)
             with _ -> Error ("Cannot open a file: " + filename)
         | _ -> Error ("Wrong file format: " + filename)
     | _ -> Error ("File does not exist: " + filename)
-
 
 let compileFromLexbuf (lexbuf:LexBuffer<_>) =
     let parsed = Parser.program (Lexer.getToken) lexbuf
@@ -43,12 +42,12 @@ let compileFile =
 [<EntryPoint>]
 let main _ = 
     let getTreeOrError =
-        compileFile >> Result.bind (fun ok -> 
+        compileFile >> Result.bind (fun ok ->
             match ErrorLogger.getCompileErrorsTotal() with
             | 0 -> Ok ok
             | n -> Error (sprintf "Compile errors: %d" n)
         )
-    
+
     let (|ValidArgs|_|) = function
     | [| file |] -> Some (file, false)
     | [| file; "-xml" |] -> Some (file, true)
@@ -57,22 +56,22 @@ let main _ =
     while true do
         do printf "> compile -file "
         match Console.ReadLine().Split(" ") with
-        | [| "\\" |] -> 
+        | [| "\\" |] ->
             exit 0
         | ValidArgs (sfile, toXml) ->
             use file = File.CreateText "compile_session.log"
             do ErrorLogger.resetLogger (combine [ consoleLogger; fileLogger file ])
             
             getTreeOrError sfile |> Result.map (fun tree ->
-                if toXml then 
+                if toXml then
                     saveAsXml tree
-                    info "Saved to ast.xml"
+                    info "AST saved to: ast.xml"
                 
                 let llvm = codegenProgram tree
-                info ("Compiled source code:\n" + llvm)
-                
                 use file = File.CreateText "program.ll"
+
                 file.Write llvm
+                info "Compiled source: program.ll"
             )
         | _ ->  
             Error "Wrong args"
@@ -80,5 +79,4 @@ let main _ =
         |> ignore
 
         do printfn ""
-
     0
