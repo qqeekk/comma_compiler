@@ -5,7 +5,7 @@ open NameHelpers
 module rec TypedAst =
     open FSharp.Text.Lexing
     let reportTypeErrorAt = 
-        ErrorLogger.reportErrorAt ErrorLogger.TypeCheck
+        ErrorLogger.reportErrorAt ErrorLogger.Semantics
 
     let expectedTypes (types: TyEntry seq) = 
         "Expected types: " + (String.concat " | " (Seq.map string types))
@@ -113,8 +113,8 @@ module rec TypedAst =
                 match getExprType env expr with
                 | Some (Single Int) -> 
                     match expr with
-                    | Integer i, _ when i >= 0 -> ()
-                    | _ -> reportTypeErrorAt epos "Array size must be compile-stage non-negative constant"
+                    | Integer i, _ when i > 0 -> ()
+                    | _ -> reportTypeErrorAt epos "Array size must be compile-stage positive constant"
                 
                 | Some ty ->
                     reportTypeErrorAt epos (unmatchedTypes (Single Int) ty)
@@ -311,21 +311,8 @@ module rec TypedAst =
 
         | GoTo l, pos -> 
             match Labels.lookup l (env.labels) with
-            | Ok venv -> 
-                let varDiff = query { 
-                    for v in env.vars do
-                    join lv in venv
-                        on (v.Key = lv.Key)
-                    where (lv.Value <> v.Value)
-                    select (v.Key, (lv.Value, v.Value)) 
-                }
-                
-                for sym, (expected, given) in varDiff do 
-                    reportTypeErrorAt pos (sprintf "Variables conflict on (%s) in goto statement: " sym 
-                                            + unmatchedTypes expected given)
-
-            | Error m -> 
-                reportTypeErrorAt pos m
+            | Ok _ -> ()
+            | Error m -> reportTypeErrorAt pos m
             env
 
         | IfElse (_, epos as expr, left, right), _ ->

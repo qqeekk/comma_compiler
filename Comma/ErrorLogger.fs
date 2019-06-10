@@ -16,7 +16,7 @@ module ErrorLogger =
     open Ast
     open FSharp.Text.Lexing
 
-    type CompileStage = Lexing | Parsing | TypeCheck
+    type CompileStage = Lexing | Parsing | Semantics
 
     type TaggedMessage = TaggedMessage of CompileStage * Positions * string
 
