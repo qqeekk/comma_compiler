@@ -300,8 +300,8 @@ let rec codegenExpr expr : LCode * string * LTyEntry =
 
         let instr = 
             match ty with
-            | Val I32 as t -> sprintf "sub %s %s, 0" (LTypes.stringify t) v
-            | Val D as t -> sprintf "fsub %s %s, 0.0" (LTypes.stringify t) v
+            | Val I32 as t -> sprintf "sub %s 0, %s" (LTypes.stringify t) v
+            | Val D as t -> sprintf "fsub %s 0.0, %s" (LTypes.stringify t) v
             | _ -> exit 1
         
         lcode +> nl true +> temp %= instr, temp, ty
@@ -446,6 +446,7 @@ let codegenDecl = function
         
             i + 1, code + code'
         ) (1, "") body)
+        +> nl true +> "ret void"
         +> nl false +> "}"
         +> nl false
 
