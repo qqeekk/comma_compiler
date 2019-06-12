@@ -406,7 +406,7 @@ let rec codegenStmt looplbls retvar = function
 
         code
         +> nl true +> store ty retvar v
-        +> nl true +> "ret void"
+        +> nl true +> br "label.ret"
 
 let codegenFuncProto name (args, (retType, _) as __ : FunSignature) : LCode * _ * _ =
     let llvmFunc = LFuncs.lname name
@@ -446,6 +446,7 @@ let codegenDecl = function
         
             i + 1, code + code'
         ) (1, "") body)
+        +> nl true +> nl true +> label "label.ret"
         +> nl true +> "ret void"
         +> nl false +> "}"
         +> nl false

@@ -40,7 +40,7 @@ let compileFile =
     )
 
 [<EntryPoint>]
-let main _ = 
+let main args = 
     let getTreeOrError =
         compileFile >> Result.bind (fun ok ->
             match ErrorLogger.getCompileErrorsTotal() with
@@ -53,16 +53,20 @@ let main _ =
     | [| file; "-xml" |] -> Some (file, true)
     | _ -> None
 
-    while true do
-        do printf "> compile -file "
-        match Console.ReadLine().Split(" ") with
+    let result =
+        match args with
         | [| "\\" |] ->
             exit 0
+    
+        | [| "-help" |] ->
+            Error "Needs arguments: <path to file> [-xml]\n\tproduces *.ll file with translated code\n\t-xml flag emits ast to xml file"
+
         | ValidArgs (sfile, toXml) ->
             use file = File.CreateText "compile_session.log"
             do ErrorLogger.resetLogger (combine [ consoleLogger; fileLogger file ])
             
-            getTreeOrError sfile |> Result.map (fun tree ->
+            getTreeOrError sfile 
+            |> Result.map (fun tree ->
                 if toXml then
                     saveAsXml tree
                     info "AST saved to: ast.xml"
@@ -74,9 +78,7 @@ let main _ =
                 info "Compiled source: program.ll"
             )
         | _ ->  
-            Error "Wrong args"
-        |> Result.mapError (printfn "%s") 
-        |> ignore
-
-        do printfn ""
+            Error "Call with -help argument to get help"
+    
+    ignore (Result.mapError (printfn "%s") result)
     0

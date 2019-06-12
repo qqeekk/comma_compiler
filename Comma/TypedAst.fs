@@ -11,7 +11,7 @@ module rec TypedAst =
         "Expected types: " + (String.concat " | " (Seq.map string types))
     
     let unmatchedTypes : TyEntry -> TyEntry -> _ = 
-        sprintf "Expected type %O but given %O"
+        sprintf "Expected type %O but there is %O"
     
     type Environment = 
         { labels : Labels
@@ -358,7 +358,7 @@ module rec TypedAst =
         | Break, pos 
         | Continue, pos ->
             if (not env.loop) then 
-                reportTypeErrorAt pos "Invalid use of \"break\" | \"continue\" statements" 
+                reportTypeErrorAt pos "Use of \"break\" | \"continue\" statements outside of the loop" 
             env
 
         | Return expr, pos -> 

@@ -27,14 +27,7 @@ and TyEntry =
 and Variables = Map<Symbol, TyEntry>
 
 type Signature = Symbol * TyEntry list * TyEntry
-//type Functions = Map<Symbol, Signature>
 type Labels = Map<Symbol, Variables>
-//type Types = Map<Symbol, Ty>
-
-//[<AutoOpen>]
-//module TypeChecking = 
-//    let reportTypeErrorAt = 
-//        ErrorLogger.reportErrorAt TypeCheck
 
 module Variables =
     let lookup name (vars: Variables) = 
@@ -49,7 +42,7 @@ module Labels =
     let lookup name (labels: Labels) = 
         match Map.tryFind name labels with
         | Some venv -> Ok venv
-        | None -> Error ("No such label found: " + name)
+        | None -> Error ("No such label found above: " + name)
 
     let enter name env (labels : Labels) = 
         if Map.containsKey name labels then
@@ -66,7 +59,7 @@ module Functions =
     let lookup name = 
         match funcs.TryGetValue name with
         | true, name -> Ok name
-        | false, _ -> Error ("No such function found: " + name)
+        | false, _ -> Error ("Function is not declared above this point: " + name + " or a recusive call")
 
     let enter ((name, _, _) as signature) =
         if funcs.ContainsKey name then
@@ -102,7 +95,7 @@ module Types =
         let map trans sym =
             match types.TryGetValue sym with
             | true, ty -> Ok (trans ty)
-            | false, _ -> Error ("No such type found: " + sym)
+            | false, _ -> Error ("Type is not declared above this point: " + sym)
         
         match typeId with
         | Ast.Single ty -> map (Single) ty
