@@ -1,53 +1,9 @@
 ﻿module rec Comma.CodeGen
 open Ast
 open LCode
-
-let constant = """
-@print_str.ptr = private constant [4 x i8] c"%s\0A\00"
-@print_int.ptr = private constant [4 x i8] c"%d\0A\00"
-@print_flt.ptr = private constant [4 x i8] c"%f\0A\00"
-"""
-
-let footer = """
-; library code
-define i32 @main(i32, i8**) {
-    %main.ret.ptr = alloca i32
-    call void @.main(i32* %main.ret.ptr)
-    %main.ret = load i32, i32* %main.ret.ptr
-    ret i32 %main.ret
-}
-
-define void @print_str (i32* %ret.value, i8* %str) {
-    %print_str.ptr = getelementptr inbounds [4 x i8], [4 x i8]* @print_str.ptr, i32 0, i32 0
-    %ret = call i32 (i8*, ...) @printf(i8* %print_str.ptr, i8* %str)
-    store i32 %ret, i32* %ret.value
-    ret void 
-}
-
-define void @print_int (i32* %ret.value, i32 %i) {
-    %print_int.ptr = getelementptr inbounds [4 x i8], [4 x i8]* @print_int.ptr, i32 0, i32 0
-    %ret = call i32 (i8*, ...) @printf(i8* %print_int.ptr, i32 %i)
-    store i32 %ret, i32* %ret.value
-    ret void 
-}
-
-define void @print_flt (i32* %ret.value, double %d) {
-    %print_flt.ptr = getelementptr inbounds [4 x i8], [4 x i8]* @print_flt.ptr, i32 0, i32 0
-    %ret = call i32 (i8*, ...) @printf(i8* %print_flt.ptr, double %d)
-    store i32 %ret, i32* %ret.value
-    ret void 
-}
-
-define void @print_bln (i32* %ret.value, i1 %b) {
-    %print_bln.ptr = getelementptr inbounds [4 x i8], [4 x i8]* @print_int.ptr, i32 0, i32 0
-    %ret = call i32 (i8*, ...) @printf(i8* %print_bln.ptr, i1 %b)
-    store i32 %ret, i32* %ret.value
-    ret void 
-}
-
-declare i32 @printf(i8*, ...)
-
-"""
+open System.Reflection
+open System.IO
+open Comma
 
 let codegenAssignable = function
     | Identifier l ->
@@ -260,14 +216,28 @@ let rec codegenExpr expr : LCode * string * LTyEntry =
             +> nl true +> acc %= load lbool accptr
         
         code, acc, lbool
-    
-    | Expr.Equals (l, r) ->
-        codegenBinOp (l, r) (fun _ -> Val I1) <| fun t ->
-            match t with
-            | Val (I1 | I8p | I32) -> "icmp eq "
-            | Val D -> "fcmp oeq "
-            | _ -> exit 1
-            + LTypes.stringify t
+
+    | Expr.Equals ((l, _), (r, _)) ->
+        let lcode, lval, ltype = codegenExpr l
+        let rcode, rval, _ = codegenExpr r
+        let temp = LVars.addTemp (Val I1)
+        
+        let instr =
+            match ltype with
+            | Val (I1 | I32) -> 
+                binop ("icmp eq " + LTypes.stringify ltype) lval rval
+            
+            | Val D -> 
+                binop ("fcmp oeq " + LTypes.stringify ltype) lval rval
+            
+            | Val I8p -> 
+                sprintf "call i1 @eq_str (%s, %s)" (LFuncs.makeParam ltype lval) (LFuncs.makeParam ltype rval)
+            
+            | _ -> 
+                exit 1
+
+        let code = nl true +> temp %= instr
+        lcode +> rcode +> code, temp, Val I1
 
     | Expr.Greater (l, r) ->
         codegenBinOp (l, r) (fun _ -> Val I1) <| fun t ->
@@ -483,6 +453,13 @@ let codegenProgram (program : Program) : LCode =
         LStrings.all()
         |> List.fold (fun code (var, str, len) ->
             code +> nl false +> (conststr var len str)
-        ) (nl false) 
+        ) (comment "constants")
    
-    comment "llvm 3.8.1" +> globalScope +> constant +> body +> footer
+    let stream = 
+        Assembly.GetExecutingAssembly()
+                .GetManifestResourceStream("Comma.commalib.ll");
+    
+    use reader = new StreamReader(stream)
+    let libcontent = reader.ReadToEnd();
+
+    comment "llvm 3.8.1" +> globalScope +> body +> nl false +> libcontent
