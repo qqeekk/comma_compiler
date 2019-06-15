@@ -231,7 +231,7 @@ let rec codegenExpr expr : LCode * string * LTyEntry =
                 binop ("fcmp oeq " + LTypes.stringify ltype) lval rval
             
             | Val I8p -> 
-                sprintf "call i32 @eq_str (%s, %s)" (LFuncs.makeParam ltype lval) (LFuncs.makeParam ltype rval)
+                sprintf "call i1 @eq_str (%s, %s)" (LFuncs.makeParam ltype lval) (LFuncs.makeParam ltype rval)
             
             | _ -> 
                 exit 1
