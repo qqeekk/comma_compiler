@@ -42,8 +42,9 @@ let reportParseErrorAt = reportErrorAt Parsing
 %left Greater GreaterEq Less LessEq
 %left Plus Minus
 %left Asterisk LSlash
-%right Bang UMinus UPlus
+%right Bang UMinus New
 %left LBrace RBrace LParen RParen LBrack RBrack Dot
+%left If
 %left Else
 
 %%
