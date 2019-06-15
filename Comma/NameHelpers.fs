@@ -72,7 +72,10 @@ module Functions =
         do ["print_int", [Single Int], Single Int
             "print_str", [Single String], Single Int
             "print_flt", [Single Float], Single Int
-            "print_bln", [Single Boolean], Single Int]
+            "print_bln", [Single Boolean], Single Int
+            "str_to_int", [Single String], Single Int
+            "str_to_flt", [Single String], Single Float
+            "input", [], Single String]
         |> List.iter (enter >> ignore)
 
     let all () =

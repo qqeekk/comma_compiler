@@ -139,9 +139,7 @@ module LTypes =
 module LFuncs = 
     let private funcs = Dictionary<LVar, LTyEntry>()
 
-    let lname : _ -> LVar = function
-    | "main" -> "@.main"
-    | name -> "@" + name
+    let lname : _ -> LVar = (+) "@."
     
     let makeParam ty : LVar -> _ = 
         LTypes.stringify ty |> sprintf "%s %s"
