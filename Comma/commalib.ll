@@ -135,10 +135,20 @@ define void @.input (i8** %ret.value1) {
     ret void
 }
 
+; these are private (only used by compiler)
+
+define i1 @eq_str(i8* %ls, i8* %rs) {
+    %x = call i32 @strcmp(i8* %ls, i8* %rs)
+    %res = icmp eq i32 %x, 0
+    ret i1 %res
+}
+
 declare double @strtod(i8*, i8**)
 declare i32 @atoi(i8*, i8**)
 declare i8* @malloc(i64)
 declare i32 @getchar()
 declare i8* @realloc(i8*, i64)
 declare i32 @printf(i8*, ...)
+declare i32 @strcmp(i8*, i8*)
+
 

@@ -219,7 +219,7 @@ let rec codegenExpr expr : LCode * string * LTyEntry =
     | Expr.Equals (l, r) ->
         codegenBinOp (l, r) (fun _ -> Val I1) <| fun t ->
             match t with
-            | Val (I1 | I8p | I32) -> "icmp eq "
+            | Val (I1 | I32) -> "icmp eq "
             | Val D -> "fcmp oeq "
             | _ -> exit 1
             + LTypes.stringify t
