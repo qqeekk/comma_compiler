@@ -3,6 +3,7 @@ open Ast
 open LCode
 open System.Reflection
 open System.IO
+open Comma
 
 let codegenAssignable = function
     | Identifier l ->
@@ -215,14 +216,28 @@ let rec codegenExpr expr : LCode * string * LTyEntry =
             +> nl true +> acc %= load lbool accptr
         
         code, acc, lbool
-    
-    | Expr.Equals (l, r) ->
-        codegenBinOp (l, r) (fun _ -> Val I1) <| fun t ->
-            match t with
-            | Val (I1 | I32) -> "icmp eq "
-            | Val D -> "fcmp oeq "
-            | _ -> exit 1
-            + LTypes.stringify t
+
+    | Expr.Equals ((l, _), (r, _)) ->
+        let lcode, lval, ltype = codegenExpr l
+        let rcode, rval, _ = codegenExpr r
+        let temp = LVars.addTemp (Val I1)
+        
+        let instr =
+            match ltype with
+            | Val (I1 | I32) -> 
+                binop ("icmp eq " + LTypes.stringify ltype) lval rval
+            
+            | Val D -> 
+                binop ("fcmp oeq " + LTypes.stringify ltype) lval rval
+            
+            | Val I8p -> 
+                sprintf "call i32 @eq_str (%s, %s)" (LFuncs.makeParam ltype lval) (LFuncs.makeParam ltype rval)
+            
+            | _ -> 
+                exit 1
+
+        let code = nl true +> temp %= instr
+        lcode +> rcode +> code, temp, Val I1
 
     | Expr.Greater (l, r) ->
         codegenBinOp (l, r) (fun _ -> Val I1) <| fun t ->
