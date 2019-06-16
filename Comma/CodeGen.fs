@@ -164,7 +164,7 @@ let rec codegenExpr expr : LCode * string * LTyEntry =
     | Expr.Div (l, r) -> 
         codegenBinOp (l, r) id <| fun t ->
             match t with
-            | Val I32 -> "div " 
+            | Val I32 -> "sdiv " 
             | Val D -> "fdiv "
             | _ -> exit 1 
             + LTypes.stringify t
@@ -325,10 +325,13 @@ let rec codegenStmt looplbls retvar = function
         List.fold (fun code (stmt, _) -> code +> codegenStmt looplbls retvar stmt) "" stmts
     
     | Stmt.Label l ->
-        nl true +> nl true +> label ("user." + l)
+        let userLabel = "user." + l
+        in nl true +> br userLabel
+        +> nl true +> nl true +> label userLabel
     
     | Stmt.GoTo l ->
-        nl true +> br ("user." + l)
+        let userLabel = "user." + l
+        in nl true +> br userLabel
     
     | Stmt.Loop (While ((expr, _), (stmt, _))) -> 
         let expcode, cond, _ = codegenExpr expr
@@ -416,6 +419,7 @@ let codegenDecl = function
         
             i + 1, code + code'
         ) (1, "") body)
+        +> nl true +> br "label.ret"
         +> nl true +> nl true +> label "label.ret"
         +> nl true +> "ret void"
         +> nl false +> "}"

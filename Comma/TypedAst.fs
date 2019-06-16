@@ -31,7 +31,7 @@ module rec TypedAst =
         List.choose (fun ((pName, (pTy, pos)), _) -> 
             match Types.lookup pTy with
             | Ok ty -> 
-                Some (pName, ty)
+                Some (pName, ty, pos)
             | Error m -> 
                 do reportTypeErrorAt pos m
                 None
@@ -292,9 +292,14 @@ module rec TypedAst =
             
             match param, right with
             | Some (name, lty), rty ->
-                do rty |> Option.iter (fun rty -> if lty <> rty then reportTypeErrorAt pos (unmatchedTypes lty rty))
+                Option.iter (fun rty -> if lty <> rty then reportTypeErrorAt pos (unmatchedTypes lty rty)) rty
                 
-                { env with vars = Variables.enter name lty (env.vars) }
+                let venv =
+                    match Variables.enter true name lty (env.vars) with
+                    | Ok venv -> venv
+                    | _ ->  env.vars // if allowDuplicates = true, no error here.
+
+                { env with vars = venv }
             
             | _ -> 
                 env
@@ -381,8 +386,14 @@ module rec TypedAst =
         | TypeDecl ty, pos -> 
             let pars' = transParamList (ty.fields)
             
-            let venv' = List.fold (fun venv' (name, ty) -> 
-                Variables.enter name ty venv') Variables.default' pars'
+            let venv' = 
+                List.fold (fun venv' (name, ty, pos) -> 
+                    match Variables.enter false name ty venv' with
+                    | Ok venv -> venv
+                    | Error m -> 
+                        reportTypeErrorAt pos m
+                        venv'
+                ) Variables.default' pars'
             
             let record = Record (ty.name, venv')
 
@@ -396,11 +407,17 @@ module rec TypedAst =
             
             match Types.lookup ty with
             | Ok ty -> 
-                let pTypes = List.map (snd) pars'
+                let pTypes = List.map (fun (_, ty, _) -> ty) pars'
 
-                let venv' = List.fold (fun venv' (name, ty) -> 
-                    Variables.enter name ty venv') Variables.default' pars'
-                
+                let venv' = 
+                    List.fold (fun venv' (name, ty, pos) -> 
+                        match Variables.enter false name ty venv' with
+                        | Ok venv -> venv
+                        | Error m -> 
+                            reportTypeErrorAt pos m
+                            venv'
+                    ) Variables.default' pars'
+            
                 let env' = { default' with vars = venv'
                                            retType = Some (ty, false) }
                 
@@ -428,4 +445,3 @@ module rec TypedAst =
             reportTypeErrorAt defaultPos "main function should have no parameters and Int return type"
         | Error m -> 
             reportTypeErrorAt defaultPos m
-

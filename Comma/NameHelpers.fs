@@ -35,7 +35,13 @@ module Variables =
         | Some x -> Ok x
         | None -> Error ("No such variable found: " + name)
 
-    let enter  : _ -> _ -> Variables -> Variables = Map.add
+    let enter allowDuplicates name tyentry (vars : Variables) : Result<Variables, _>  =
+        match allowDuplicates || not (Map.containsKey name vars) with
+        | true -> 
+            Ok (Map.add name tyentry vars)
+        | false -> 
+            Error (sprintf "Duplicate variable names (%s) cannot be declared here" name)
+    
     let default' : Variables = Map.empty
 
 module Labels =
