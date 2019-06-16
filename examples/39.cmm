@@ -1,0 +1,17 @@
+struct X {
+	value: Int
+}
+
+func main() -> Int {
+	var a:X = new X{value = 2};
+	var b:X = new X{value = 5};
+
+	var temp:X = new X{value = 0};
+
+	temp.value = a.value;
+	a.value = b.value;
+	b.value = temp.value;
+	print_int(a.value);
+	print_int(b.value);
+	return 0;
+}

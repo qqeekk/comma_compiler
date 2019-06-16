@@ -1,0 +1,28 @@
+struct X {
+	value: Int
+}
+
+func myfunc(a:[X]) -> Int {
+	var i: Int = 0;
+	var max: Int = a[0].value;
+	while (i < 5) {
+		if (a[i].value > max) {
+			max = a[i].value;
+		}
+		i = i + 1;
+	}
+	return max;
+}
+
+func main() -> Int {
+	var a: [X] = new X[5];
+	a[0] = new X{value = 1};
+	a[1] = new X{value = 5};
+	a[2] = new X{value = 3};
+	a[3] = new X{value = 7};
+	a[4] = new X{value = 4};	
+
+	print_int(myfunc(a));
+
+	return 0;
+}

@@ -1,0 +1,26 @@
+struct X {
+	value: Int
+}
+
+func main() -> Int {
+	
+	var a: X = new X{value = 1};
+	var b: X = new X{value = 5};
+	var c: X = new X{value = 6};
+
+	if (a.value > b.value) {
+		if (a.value > c.value) {
+			print_int(a.value);
+		} else {
+			print_int(c.value);
+		}
+	} else {
+		if (b.value > c.value) {
+			print_int(b.value);
+		} else {
+			print_int(c.value);
+		}
+	}
+
+	return 0;
+}

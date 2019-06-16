@@ -1,0 +1,14 @@
+func main() -> Int {
+	var a: Int = 1;
+	var b: String = "YOLO";
+	if (a == 1) {
+		if (b == "YOLO") {
+			print_str(b);
+		} else {
+			print_str("SWAG");
+		}
+	} else {
+		print_str("FAIL");
+	}
+	return 0;
+}

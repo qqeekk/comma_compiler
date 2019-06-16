@@ -1,0 +1,6 @@
+func main() -> Int {
+	var a: Int = 4;
+	var b: Int = 1;
+	print_bln(a == b);
+	return 0;
+}

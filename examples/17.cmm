@@ -1,0 +1,6 @@
+func main() -> Int {
+	var a: Bool = true;
+	var b: Bool = false;
+	print_bln(a && b);
+	return 0;
+}

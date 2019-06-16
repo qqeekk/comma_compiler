@@ -1,0 +1,10 @@
+func main() -> Int {
+	var a: Bool = true;
+	var b: Bool = false;
+	if (a && b) {
+		print_str("Yeah");
+	} else if (a || b) {
+		print_str("Close");
+	}
+	return 0;
+}

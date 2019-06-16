@@ -1,0 +1,18 @@
+func main() -> Int {
+var flag: Int = 0;
+a:
+	print_str("Point a");
+	flag = 2;
+b:
+	if (flag == 1) {
+		print_str("Point b");
+	}
+c:
+	if (flag == 2) {
+		print_str("Point c");
+		flag = 1;
+		goto b;
+	}
+
+	return 0;
+}

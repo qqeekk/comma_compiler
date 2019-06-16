@@ -1,0 +1,11 @@
+struct X {
+	a: Int,
+	b: Float
+}
+
+func main() -> Int {
+	var x: X = new X{a = 1, b = 2.0};
+	print_int(x.a);
+	print_flt(x.b);
+	return 0;
+}

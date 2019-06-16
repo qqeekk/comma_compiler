@@ -1,0 +1,10 @@
+func main() -> Int {
+	var a: Float = 10.0;
+	var b: Float = 2.3;
+	var eps: Float = 0.5;
+	while (a - b > eps) {
+		print_flt(a-b);
+		a = a - 0.3;
+	}
+	return 0;
+}

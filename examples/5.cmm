@@ -1,0 +1,92 @@
+// Non-recursive quick sort
+
+struct X {
+    value: Int
+}
+
+func partition(array: [X], l: Int, h: Int) -> Int {
+    var x: Int = array[h].value;
+    var i: Int = (l - 1);
+
+    var j: Int = l;
+    var temp: Int = 0;
+    while(j <= h - 1) {
+        if (array[j].value <= x) {
+            i = i + 1;
+            temp = array[i].value;
+            array[i].value = array[j].value;
+            array[j].value = temp;
+        }
+        j = j + 1;
+    }
+    i = i + 1;
+    temp = array[i].value;
+    array[i].value = array[h].value;
+    array[h].value = temp;
+    return i;
+}
+
+func quickSortIterative(array: [X], l: Int, h: Int) -> Bool {
+    var stack: [Int] = new Int[100];
+    var top: Int = 0;
+    stack[top] = l;
+    top = top + 1;
+    stack[top] = h;
+
+    while (top >= 0) {
+        h = stack[top];
+        top = top - 1;
+        l = stack[top];
+        top = top - 1;
+
+        var p: Int = partition(array, l, h);
+        if (p - 1 > l) {
+            top = top + 1;
+            stack[top] = l;
+            top = top + 1;
+            stack[top] = p - 1;
+        }
+
+        if (p + 1 < h) {
+            top = top + 1;
+            stack[top] = p + 1;
+            top = top + 1;
+            stack[top] = h;
+        }
+    }
+    return true;
+}
+
+func main() -> Int {
+    print_str("Hello");
+    var array:[X] = new X[10];
+    array[0] = new X {value = 3};
+    array[1] = new X {value = 1};
+    array[2] = new X {value = 4};
+    array[3] = new X {value = 9};
+    array[4] = new X {value = 2};
+    array[5] = new X {value = 8};
+    array[6] = new X {value = 6};
+    array[7] = new X {value = 7};
+    array[8] = new X {value = 5};
+    array[9] = new X {value = 10};
+
+    print_str("Input:");
+
+    var count: Int = 0;
+    while(count<10){
+        print_int(array[count].value);
+        count = count + 1;
+    }
+
+    quickSortIterative(array, 0, 9);
+
+    print_str("Result");
+    count = 0;
+    while(count<10){
+        print_int(array[count].value);
+        count = count + 1;
+    }
+
+    return 0;
+}

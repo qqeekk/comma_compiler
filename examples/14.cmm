@@ -1,0 +1,6 @@
+func main() -> Int {
+	var a: String = "1";
+	var b: String = "1";
+	print_bln(a == b);
+	return 0;
+}

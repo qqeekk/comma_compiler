@@ -1,0 +1,13 @@
+func main() -> Int {
+	var i: Int = 1;
+	print_str("The values which are not equal 5 or 7: ");
+	while (i <= 10) {
+		if (i != 5 && i != 7) {
+			print_int(i);
+		} else {
+		 	print_str("<<Restricted>>");
+		}
+		i = i + 1;
+	}
+	return 0;
+}

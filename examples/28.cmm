@@ -1,0 +1,25 @@
+func myfunc(a:[Int]) -> Int {
+	var i: Int = 0;
+	var max: Int = a[0];
+	var max_i: Int = 0;
+	while (i < 5) {
+		if (a[i] > max) {
+			max = a[i];
+			max_i = i;
+		}
+		i = i + 1;
+	}
+	return max_i;
+}
+
+func main() -> Int {
+	var a: [Int] = new Int[5];
+	a[0] = 1;
+	a[1] = 2;
+	a[2] = 7;
+	a[3] = 3;
+	a[4] = 1;
+	print_str("Maximum index:");
+	print_int(myfunc(a));
+	return 0;
+}

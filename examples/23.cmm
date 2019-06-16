@@ -1,0 +1,19 @@
+func check(a: Int, b: Int) -> Bool {
+	if (a > b) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
+func main() -> Int {
+	var a: Int = 10;
+	var b: Int = 15;
+
+	if (check(a, b)) {
+		print_str("More");
+	} else {
+		print_str("Less");
+	}
+	return 0;
+}

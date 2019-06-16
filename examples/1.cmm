@@ -1,0 +1,21 @@
+struct X {
+	value: Int
+}
+
+func main() -> Int {
+    var a: Int = 1;
+    var b: Float = 2.0;
+    var c: String = "3";
+    var d: Bool = true;
+    var e: X = new X{value = 5};
+    var f: [Int] = new Int[1];
+    f[0] = 6;
+
+    print_int(a);
+    print_flt(b);
+    print_str(c);
+    print_bln(d);
+    print_int(e.value);
+    print_int(f[0]);
+    return 0;
+}

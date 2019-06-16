@@ -1,0 +1,9 @@
+func myfunc() -> Int {
+	print_str("Func without params");
+	return 0;
+}
+
+func main() -> Int {
+	myfunc();
+	return 0;
+}

@@ -1,0 +1,10 @@
+func main() -> Int {
+	var a: Int = 5;
+	var b: Int = 2;
+
+	print_int(a + b);
+	print_int(a - b);
+	print_int(a * b);
+	print_int(a / b);
+	return 0;
+}

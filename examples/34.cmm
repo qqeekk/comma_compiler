@@ -1,0 +1,23 @@
+func main() -> Int {
+	var a: [Int] = new Int[5];
+	a[0] = 1;
+	a[1] = 2;
+	a[2] = 7;
+	a[3] = 3;
+	a[4] = 1;
+
+	var min: Int = 10;
+	var max: Int = -1;
+	var i: Int = 0;
+	while (i<5) {
+		if (min > a[i]) {
+			min = a[i];
+		}
+		if (max < a[i]) {
+			max = a[i];
+		}
+		i = i + 1;
+	}	
+	print_int(max-min);
+	return 0;
+}

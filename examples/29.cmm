@@ -1,0 +1,20 @@
+func main() -> Int {
+	var a: Int = 10;
+	var b: Int = 5;
+	var c: Int = 7;
+
+	if (a > b) {
+		if (a > c) {
+			print_int(a);
+		} else {
+			print_int(c);
+		}
+	} else {
+		if (b > c) {
+			print_int(b);
+		} else {
+			print_int(c);
+		}
+	}
+	return 0;
+}

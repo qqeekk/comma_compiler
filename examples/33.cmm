@@ -1,0 +1,12 @@
+func main() -> Int {
+	var a: Int = 1;
+	var b: Int = 2;
+	var temp: Int = 0;
+
+	temp = a;
+	a = b;
+	b = temp;
+	print_int(a);
+	print_int(b);
+	return 0;
+}

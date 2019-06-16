@@ -1,0 +1,8 @@
+func circleLength(r: Float) -> Float {
+	return 3.1416 * r * 2.0;
+}
+
+func main() -> Int {
+	print_flt(circleLength(3.0));
+	return 0;
+}

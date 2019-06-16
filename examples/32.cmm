@@ -1,0 +1,16 @@
+func main() -> Int {
+	var sums:[Int] = new Int[3];
+	sums[0] = 0;
+	sums[1] = 0;
+	sums[2] = 0;
+
+	var i: Int = 1;
+	while (i < 15) {
+		sums[i/5] = sums[i/5] + i;
+		i = i + 1;
+	}
+	print_int(sums[0]);
+	print_int(sums[1]);
+	print_int(sums[2]);
+	return 0;
+}

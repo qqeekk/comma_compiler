@@ -1,0 +1,23 @@
+struct X {
+	value: Int
+}
+
+func check(a: X, b: X) -> Bool {
+	if (a.value > b.value) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
+func main() -> Int {
+	var a: X = new X{value = 1};
+	var b: X = new X{value = 5};
+
+	if (check(a, b)) {
+		print_str("More");
+	} else {
+		print_str("Less");
+	}
+	return 0;
+}

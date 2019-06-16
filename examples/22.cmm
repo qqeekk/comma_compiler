@@ -1,0 +1,13 @@
+func myfunc(a: String) -> String {
+	if (a == "YOLO") {
+		return a;
+	} else {
+		return "SWAG";
+	}
+}
+
+func main() -> Int {
+	print_str(myfunc("YOLO"));
+	print_str(myfunc("Another"));
+	return 0;
+}

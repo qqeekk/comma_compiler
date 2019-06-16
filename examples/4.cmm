@@ -1,0 +1,9 @@
+func str(s: String) -> String {
+    return s;
+}
+
+func main() -> Int {
+    var s: String = "My string";
+    print_str(str(s));
+    return 0;
+}

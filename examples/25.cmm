@@ -1,0 +1,19 @@
+struct X {
+	value: Int
+}
+
+func myfunc(x: X, a: Int) -> X {
+	x.value = a;
+	return x;
+}
+
+func main() -> Int {
+	
+	var x: X = new X{value = 1};
+	print_int(x.value);
+
+	x = myfunc(x, 2);
+	print_int(x.value);
+
+	return 0;
+}

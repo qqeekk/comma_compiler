@@ -1,0 +1,6 @@
+func main() -> Int {
+	var a: Float = 4.0;
+	var b: Float = 4.0;
+	print_bln(a == b);
+	return 0;
+}

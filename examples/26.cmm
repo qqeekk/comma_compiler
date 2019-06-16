@@ -1,0 +1,14 @@
+func main() -> Int {
+	var a: [Int] = new Int[5];
+	a[0] = 1;
+	a[1] = 2;
+	a[2] = 3;
+	a[3] = 4;
+	a[4] = 5;
+	var i: Int = 0;
+	while (i < 5) {
+		print_int(a[i]);
+		i = i + 1;
+	}
+	return 0;
+}

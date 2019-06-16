@@ -1,0 +1,11 @@
+func myfunc(a: Int) -> Int {
+	print_str("Func with param");
+	print_int(a);
+	return 0;
+}
+
+
+func main() -> Int {
+	myfunc(4);
+	return 0;
+}

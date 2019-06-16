@@ -1,0 +1,23 @@
+func main() -> Int {
+    var i: Int = 1;
+    print_str("Continue check: ");
+    while(i <= 10) {
+        if (i == 5 || i > 8) {
+	    i = i + 1;
+            continue;
+        }
+        print_int(i);
+	i = i + 1;
+    }
+
+    var j:Int = 1;
+    print_str("Break check:");
+    while(j <= 10) {
+        if (j == 4) {
+            break;
+        }
+        print_int(j);
+	j = j + 1;
+    }
+    return 0;
+}

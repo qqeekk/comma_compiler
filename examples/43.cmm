@@ -1,0 +1,7 @@
+func main() -> Int {
+	var s: String = "10";
+	var a: Int = 0;
+	a = str_to_int(s);
+	print_int(a);
+	return 0;
+}

@@ -1,0 +1,7 @@
+func main() -> Int {
+	var s: String = "10.0";
+	var a: Float = 0.0;
+	a = str_to_flt(s);
+	print_flt(a);
+	return 0;
+}

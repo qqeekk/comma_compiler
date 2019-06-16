@@ -1,0 +1,12 @@
+func main() -> Int {
+	var a: Int = 10;
+	var b: Int = 12;
+	if (a == b) {
+		print_str("Equal");
+	} else if (a > b) {
+		print_str("Greater");
+	} else if (a < b) {
+		print_str("Less");
+	}
+	return 0;
+}

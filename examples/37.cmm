@@ -1,0 +1,4 @@
+func main() -> Int {
+	// Comment example
+	return 0;
+}

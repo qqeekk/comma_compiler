@@ -1,0 +1,8 @@
+func circleSquare(r: Float) -> Float {
+	return 3.1416 * r * r;
+}
+
+func main() -> Int {
+	print_flt(circleSquare(3.0));
+	return 0;
+}

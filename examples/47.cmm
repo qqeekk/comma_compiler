@@ -1,0 +1,10 @@
+func main() -> Int {
+	var s1:String = "first";
+	var s2:String = "first";
+	if (s1 == s2) {
+		print_str("Equal");
+	} else {
+		print_str("Not equal");
+	}
+	return 0;
+}

@@ -1,0 +1,11 @@
+func main() -> Int {
+	var i: Int = 0;
+beg:
+	if (i == 5) {
+		return 0;
+	}
+	print_int(i);
+	i = i + 1;
+	goto beg;
+	return 0;
+}
