@@ -1,0 +1,19 @@
+// 'else' should bind tighter then 'if'
+func branch_precedence_test(a : Int) -> Int {
+    if (a > 5)
+        if (a > 8)
+            print_str("8 ..");
+        else 
+            print_str("5 .. 8");
+    else
+        print_str(".. 5");
+	
+    return 0;
+}
+
+func main() -> Int {
+    print_str("Input integer");
+    var a: Int = str_to_int(input());
+
+    return branch_precedence_test(a);
+}
