@@ -1,4 +1,3 @@
-// 'else' should bind tighter then 'if'
 func branch_precedence_test(a : Int) -> Int {
     if (a > 5)
         if (a > 8)
