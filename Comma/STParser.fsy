@@ -15,14 +15,13 @@ library:
     
 library_element_declaration:
     | data_type_declaration { None }
-    | /function_declaration { None }
+    | function_declaration { None }
     | /function_block_declaration { None }
     | /program_declaration { None }
 
 /* --------------- */
 /* B.1.2 Constants */
 /* --------------- */
-
 constant: 
     | numeric_literal
     | CharStr
@@ -233,3 +232,115 @@ string_type_declaration:
     | Id ColonEq string_type_name ColonEq CharStr
     | Id ColonEq string_type_name
 
+/* -------------------------------------- */
+/* B.1.4.3 Declaration and initialization */
+/* -------------------------------------- */
+retain:
+    | Retain
+    | NonRetain
+    |
+
+input_declarations :
+    | VarInput retain input_declaration_list EndVar
+
+input_declaration_list:
+    | input_declaration Semicolon input_declaration_list
+    | input_declaration Semicolon
+
+input_declaration:
+    | var_init_decl
+    | edge_declaration
+
+edge_declaration:
+    | var1_list ColonEq Bool REdge
+    | var1_list ColonEq Bool FEdge
+
+var_init_decl:
+    | var1_init_decl
+    | array_var_init_decl
+    | structured_var_init_decl
+    | fb_name_decl
+    | string_var_declaration
+
+var1_spec_init:
+    | simple_spec_init
+    // | /subrange_spec_init
+    // | enumerated_spec_init
+
+var1_init_decl:
+    | var1_list Colon var1_spec_init
+
+var1_list:
+    | Id Comma var1_list
+    | Id
+
+array_var_init_decl:
+    | var1_list Colon array_spec_init
+
+structured_var_init_decl:
+    | var1_list Colon initialized_structure
+
+fb_name_decl:
+    | fb_name_list Colon /function_block_type_name
+    | fb_name_list Colon /function_block_type_name ColonEq structure_initialization
+
+fb_name_list:
+    | Id Comma fb_name_list
+    | Id
+
+output_declarations:
+    | VarOutput retain var_init_decl_list EndVar
+
+input_output_declarations:
+    | VarInOut var_delcaration_list EndVar
+
+var_delcaration_list:
+    | var_delcaration Semicolon var_delcaration_list
+    | var_delcaration
+
+var_delcaration:
+    | temp_var_decl
+    | fb_name_decl
+
+temp_var_decl:
+    | var1_declaration
+    | array_var_declaration
+    | structured_var_declaration
+    | string_var_declaration
+
+var1_declaration:
+    | var1_list Colon simple_specification
+    // | var1_list Colon /subrange_specification
+    // | var1_list Colon enumerated_specification
+
+var_init_decl_list:
+    | var_init_decl Semicolon var_init_decl_list
+    | var_init_decl
+
+string_var_declaration:
+    | var1_list ColonEq CharStr
+
+array_var_declaration:
+    | var1_list Colon array_specification
+
+structured_var_declaration:
+    | var1_list Colon Id
+
+/* ----------------- */
+/* B.1.5.1 Functions */
+/* ----------------- */
+function_declaration:
+    | Functions Id ColonEq Id non_generic_type_name
+
+var_delcarations_list:
+    | var_delcarations var_delcarations_list
+    | var_delcarations
+
+var_delcarations:
+    | io_var_declarations
+    | /function_var_decls
+
+io_var_declarations:
+    | input_declarations
+    | output_declarations
+    | input_output_declarations
