@@ -1,0 +1,982 @@
+Helpers
+
+  unicode_input_character =
+    [0..0xffff];
+
+  common_character_representation =
+    unicode_input_character - ['$' + ''' + '"' ] |
+    '$$' |
+    '$L' |
+    '$N' |
+    '$P' |
+    '$R' |
+    '$T' |
+    '$l' |
+    '$n' |
+    '$p' |
+    '$r' |
+    '$t';
+
+Tokens
+
+  // B.1.1 Letters, digits and identifiers
+
+  // English alphabet
+  letter =
+    [0x0041..0x005a] |
+    [0x0061..0x007a];
+
+  digit =
+    '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
+
+  octal_digit =
+    '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7';
+  
+  hex_digit =
+    '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+
+  identifier =
+    (letter | '_' letter_or_digit) underscored_letter_or_digit*;
+
+  letter_or_digit =
+    letter |
+    digit;
+
+  underscored_letter_or_digit =
+    ('_')? letter_or_digit;
+
+  // B.1.2.1 Numeric literals
+
+  sign =
+    '+' | '-';  
+
+  bit =
+    '0' | '1';
+
+  signed_integer_literal =
+    signed_integer |
+    binary_integer |
+    octal_integer |
+    hex_integer;
+
+  unsigned_integer_literal =
+    integer |
+    binary_integer |
+    octal_integer |
+    hex_integer;
+
+  signed_integer =
+    sign? integer;
+
+  integer =
+    digit underscored_digit*;
+
+  underscored_digit =
+    ('_')? digit;
+
+  binary_integer =
+    '2#' bit underscored_bit*;
+
+  underscored_bit =
+    ('_')? bit;
+
+  octal_integer =
+    '8#' octal_digit underscored_octal_digit*;
+
+  underscored_octal_digit =
+    ('_')? octal_digit;
+
+  hex_integer =
+    '16#' hex_digit underscored_hex_digit*;
+  
+  underscored_hex_digit =
+    ('_')? hex_digit;
+
+  // B.1.2.2 Character strings
+
+  single_byte_character_string =
+    ''' single_byte_character_representation* ''';
+
+  double_byte_character_string =
+    '"' double_byte_character_representation* '"';
+
+  single_byte_character_representation =
+    common_character_representation |
+    '$' ''' |
+    '"' |
+    '$' [fst]:hex_digit [snd]:hex_digit;
+
+  double_byte_character_representation =
+    common_character_representation |
+    '$' '"' |
+    ''' |
+    '$' [fst]:hex_digit [snd]:hex_digit [trd]:hex_digit [fth]:hex_digit;
+
+Productions
+
+  library =
+    library_element_declaration*;
+
+  // B.0
+
+  library_element_declaration =
+    {data_type} data_type_declaration |
+    {function} function_declaration |
+    {function_block} function_block_declaration |
+    {program} program_declaration;
+    //{configuration} configuration_declaration
+  
+  // B.1.3 Data types
+
+  non_generic_type_name =
+    elementary_type_name |
+    derived_type_name;
+
+  // B.1.3.1 Elementary data types
+
+  elementary_type_name =
+    {numeric} numeric_type_name |
+    {date} date_type_name |
+    {bit_string} bit_string_type_name |
+    {string} 'STRING' |
+    {wstring} 'WSTRING' |
+    {time} 'TIME';
+
+  numeric_type_name =
+    {integer} integer_type_name |
+    {real} real_type_name;
+
+  integer_type_name =
+    {signed_integer} signed_integer_type_name |
+    {unsigned_integer} unsigned_integer_type_name;
+
+  signed_integer_type_name =
+    'SINT' | 'INT' | 'DINT' | 'LINT';
+
+  unsigned_integer_type_name =
+    'USINT' | 'UINT' | 'UDINT' | 'ULINT';
+
+  real_type_name =
+    'REAL' | 'LREAL';
+
+  date_type_name =
+    'DATE' | 'TIME_OF_DAY' | 'TOD' | 'DATE_AND_TIME' | 'DT';
+
+  bit_string_type_name =
+    'BOOL' | 'BYTE' | 'WORD' | 'DWORD' | 'LWORD';
+
+  bit_string_literal_type_name =
+    'BYTE' | 'WORD' | 'DWORD' | 'LWORD';
+
+  // B.1.2 Constants
+
+  constant =
+    {numeric} numeric_literal |
+    {character} character_string |
+    {time} time_literal |
+    {bit_string} bit_string_literal |
+    {boolean} boolean_literal;
+
+  // B.1.2.1 Numeric literals
+  
+  numeric_literal =
+    {integer} integer_literal |
+    {real} real_literal;
+
+  integer_literal =
+     (integer_type_name '#')? signed_integer_literal;
+
+  real_literal =
+    (real_type_name '#')? signed_integer '.' integer exponent?;
+
+  exponent =
+    ('E' | 'e') sign? integer;
+
+  bit_string_literal =
+    (bit_string_literal_type_name '#')?  unsigned_integer_literal;
+
+  boolean_literal =
+    {numeric} ('BOOL#')? bit |
+    {true} 'TRUE' |
+    {false} 'FALSE';
+
+  // B.1.2.2 Character strings
+  
+  character_string =
+    {single} single_byte_character_string |
+    {double} double_byte_character_string;
+
+  // B.1.2.3 Time literals
+
+  time_literal =
+    {duration} duration |
+    {time_of_day} time_of_day |
+    {date} date |
+    {date_and_time} date_and_time;
+
+  // B.1.2.3.1 Duration
+
+  duration =
+    ('T' | 'TIME') '#' ('-')? interval;
+
+  interval =
+    days |
+    hours |
+    minutes |
+    seconds |
+    milliseconds;
+
+  days =
+    fixed_point 'd' |
+    integer 'd' ('_')? hours;
+
+  fixed_point =
+    integer ('.' [real]:integer)?;
+
+  hours =
+    fixed_point 'h' |
+    integer 'h' ('_')? minutes;
+
+  minutes =
+    fixed_point 'm' |
+    integer 'm' ('_')? seconds;
+
+  seconds =
+    fixed_point 's' |
+    integer 's' ('_')? milliseconds;
+
+  milliseconds =
+    fixed_point 'ms';
+
+  // B.1.2.3.2 Time of day and date
+
+  time_of_day =
+    ('TIME_OF_DAY' | 'TOD') '#' daytime;
+
+  daytime =
+    day_hour ':' day_minute ':' day_second;
+
+  day_hour =
+    integer;
+  
+  day_minute =
+    integer;
+  
+  day_second =
+    fixed_point;
+
+  date =
+    ('DATE' | 'D') '#' date_literal;
+
+  date_literal =
+    year '-' month '-' day;
+
+  year =
+    integer;
+
+  month =
+    integer;
+
+  day =
+    integer;
+
+  date_and_time =
+    ('DATE_AND_TIME' | 'DT') '#' date_literal '-' daytime;
+
+  // B.1.3.3 Derived data types
+  
+  derived_type_name =
+    {single} single_element_type_name |
+    {array} array_type_name |
+    {struct} structure_type_name |
+    {string} string_type_name;
+
+  single_element_type_name =
+    {simple} simple_type_name;
+    //{subrange} subrange_type_name |
+    //{enumerated} enumerated_type_name
+
+  simple_type_name =
+    identifier;
+
+  array_type_name =
+    identifier;
+
+  structure_type_name =
+    identifier;
+
+  string_type_name =
+    identifier;
+
+  structure_element_name =
+    identifier;
+
+  data_type_declaration_list =
+    data_type_declaration_list_head* type_declaration;
+
+  data_type_declaration_list_head =
+    type_declaration ';';
+
+  data_type_declaration =
+    'TYPE' data_type_declaration_list 'END_TYPE';
+
+  type_declaration =
+    {single} single_element_type_declaration |
+    {array} array_type_declaration |
+    {struct} structure_type_declaration |
+    {string} string_type_declaration;
+  
+  single_element_type_declaration =
+    simple_type_declaration;
+    //{subrange} subrange_type_declaration |
+    //{enumerated} enumerated_type_declaration
+    
+  simple_type_declaration =
+    simple_type_name ':' simple_spec_init;
+
+  simple_spec_init =
+    simple_specification (':=' constant)?;
+  
+  simple_specification =
+    {elementary} elementary_type_name |
+    {simple} simple_type_name;
+  
+  subrange =
+    signed_integer '..' signed_integer;
+
+  subrange_list =
+    subrange_list_head* subrange;
+
+  subrange_list_head =
+    subrange ',';
+
+  array_type_declaration =
+    array_type_name ':' array_spec_init;
+
+  array_spec_init =
+    array_specification (':=' array_initialization);
+
+  array_specification =
+    {named} array_type_name |
+    {inline} 'ARRAY' '[' subrange_list ']' 'OF' non_generic_type_name;
+
+  array_initialization =
+    '[' array_initial_elements_list ']';
+  
+  array_initial_elements_list =
+    array_initial_elements_list_head* array_initial_elements;
+
+  array_initial_elements_list_head =
+    array_initial_elements ',';
+
+  array_initial_elements =
+    {single} initial_element |
+    {repeat} integer '(' initial_element? ')';
+
+  initial_element =
+    {constant} constant |
+    //{enumerated} enumerated_value |
+    {struct} structure_initialization |
+    {array} array_initialization;
+
+  structure_type_declaration =
+    structure_type_name ':' structure_specification;
+
+  structure_specification =
+    {structure_declaration} structure_declaration |
+    {initialized} initialized_structure;
+
+  initialized_structure =
+    structure_type_name (':=' structure_initialization)?;
+
+  structure_declaration =
+    'STRUCT' structure_element_declaration_list 'END_STRUCT';
+
+  structure_element_declaration_list =
+    structure_element_declaration_list_head* structure_element_declaration;
+  
+  structure_element_declaration_list_head =
+    structure_element_declaration ';';
+
+  structure_element_declaration =
+    structure_element_name ':' structure_element_init;
+
+  structure_element_init =
+    {simple} simple_spec_init |
+    //{subrange} subrange_spec_init |
+    //{enumerated} enumerated_spec_init |
+    {array} array_spec_init |
+    {struct} initialized_structure;
+
+  structure_initialization =
+    '(' structure_element_initialization_list ')';
+
+  structure_element_initialization_list =
+    structure_element_initialization_list_head* structure_element_initialization;
+
+  structure_element_initialization_list_head =
+    structure_element_initialization ',';
+
+  structure_element_initialization =
+    structure_element_name ':=' initial_element;
+
+  string_type_declaration =
+    string_type_name ':' ('STRING' | 'WSTRING') ('[' [len]:integer ']')? (':=' [val]:character_string)?;
+
+  // B.1.4 Variables
+
+  variable =
+    direct_variable |
+    symbolic_variable;
+
+  symbolic_variable =
+    variable_name |
+    multi_element_variable;
+
+  variable_name =
+    identifier;
+
+  // B.1.4.1 Directly represented variables
+
+  direct_variable =
+    '%' location_prefix size_prefix? integer prefixed_integer*;
+
+  prefixed_integer =
+    '.' integer;
+
+  location_prefix =
+    'I' | 'Q' | 'M';
+
+  size_prefix =
+    'X' | 'B' | 'W' | 'D' | 'L';
+
+  // B.1.4.2 Multi-element variables
+
+  multi_element_variable =
+    array_variable |
+    structured_variable;
+
+  array_variable =
+    subscripted_variable subscript_list;
+
+  subscripted_variable =
+    symbolic_variable;
+
+  subscript_list =
+    subscript_list_head* subscript;
+
+  subscript_list_head =
+    subscript ',';
+
+  subscript =
+    expression;
+
+  structured_variable =
+    record_variable '.' field_selector;
+
+  record_variable =
+    symbolic_variable;
+
+  field_selector =
+    identifier;
+
+  // B.1.4.3 Declaration and initialization
+
+  input_declarations =
+    'VAR_INPUT' retain input_declaration_list 'END_VAR';
+  
+  input_declaration_list =
+    input_declaration_list_head* input_declaration;
+
+  input_declaration_list_head =
+    input_declaration ';';
+
+  input_declaration =
+    {var} var_init_decl |
+    {edge} edge_declaration;
+  
+  edge_declaration =
+    var1_list ':' 'BOOL' edge;
+
+  edge =
+    'R_EDGE' |
+    'F_EDGE';
+
+  var_init_decl =
+    {var} var1_init_decl |
+    {array} array_var_init_decl |
+    {struct} structured_var_init_decl |
+    {fb_name} fb_name_decl |
+    {string} string_var_declaration;
+
+  var1_init_decl =
+    var1_list ':' var1_spec_init;
+
+  var1_list =
+    var1_list_head* variable_name;
+
+  var1_list_head =
+    variable_name ',';
+
+  var1_spec_init =
+    {simple} simple_spec_init;
+    //{subrange} subrange_spec_init |
+    //{enumerated} enumerated_spec_init
+
+  array_var_init_decl =
+    var1_list ':' array_spec_init;
+
+  structured_var_init_decl =
+    var1_list ':' initialized_structure;
+
+  fb_name_decl =
+    fb_name_list ':' function_block_type_name (':=' structure_initialization)?;
+
+  fb_name_list =
+    fb_name_list_head* fb_name;
+  
+  fb_name_list_head =
+    fb_name ',';
+  
+  fb_name =
+    identifier;
+
+  output_declarations =
+    'VAR_OUTPUT' retain var_init_decl_list 'END_VAR';
+
+  retain =
+    'RETAIN' |
+    'NON_RETAIN';
+
+  var_init_decl_list =
+    var_init_decl_list_head* var_init_decl;
+
+  var_init_decl_list_head =
+    var_init_decl ';';
+
+  input_output_declarations =
+    'VAR_IN_OUT' var_declaration_list 'END_VAR';
+
+  var_declaration_list =
+    var_declaration_list_head* var_declaration;
+  
+  var2_init_decl_list_head =
+    var_declaration ';';
+
+  var_declaration =
+    temp_var_decl |
+    fb_name_decl;
+
+  temp_var_decl =
+    var1_declaration |
+    array_var_declaration |
+    structured_var_declaration |
+    string_var_declaration;
+
+  var1_declaration =
+    var1_list ':' var1_declaration_specification;
+
+  var1_declaration_specification =
+    simple_specification;
+    //subrange_specification |
+    //enumerated_specification;
+
+  array_var_declaration =
+    var1_list ':' array_specification;
+
+  structured_var_declaration =
+    var1_list ':' structure_type_name;
+
+  var_declarations =
+    'VAR' ('CONSTANT')? var_init_decl_list 'END_VAR';
+
+  retentive_var_declarations =
+    'VAR' 'RETAIN' var_init_decl_list 'END_VAR';
+
+  located_var_declarations =
+    'VAR' ('CONSTANT' | 'RETAIN' | 'NON_RETAIN')? located_var_decl_list 'END_VAR';
+  
+  located_var_decl_list =
+    located_var_decl_list_head* located_var_decl;
+
+  located_var_decl_list_head =
+    located_var_decl ';';
+
+  located_var_decl =
+    variable_name? location ':' located_var_spec_init;
+
+  external_var_declarations =
+    'VAR_EXTERNAL' ('CONSTANT')? external_declaration_list 'END_VAR';
+
+  external_declaration_list =
+    external_declaration_list_head* external_declaration;
+
+  external_declaration_list_head =
+    external_declaration ';';
+
+  external_declaration =
+    global_var_name ':' external_declaration_specification;
+
+  external_declaration_specification =
+    simple_specification |
+    subrange_specification |
+    enumerated_specification |
+    array_specification |
+    structure_type_name |
+    function_block_type_name;
+
+  global_var_name =
+    identifier;
+
+  located_var_spec_init =
+    simple_spec_init |
+    //subrange_spec_init |
+    //enumerated_spec_init |
+    array_spec_init |
+    initialized_structure |
+    single_byte_string_spec |
+    double_byte_string_spec;
+
+  location =
+    'AT' direct_variable;
+
+  string_var_declaration =
+    {single} single_byte_string_var_declaration |
+    {double} double_byte_string_var_declaration;
+
+  single_byte_string_var_declaration =
+    var1_list ':' single_byte_string_spec;
+
+  single_byte_string_spec =
+    'STRING' ('[' integer ']')? (':=' single_byte_character_string)?;
+
+  double_byte_string_var_declaration =
+    var1_list ':' double_byte_string_spec;
+
+  double_byte_string_spec ::=
+    'WSTRING' ('[' integer ']')? (':=' double_byte_character_string)?;
+
+  incompl_located_var_declarations =
+    'VAR' retain incompl_located_var_decl_list 'END_VAR';
+
+  incompl_located_var_decl_list =
+    incompl_located_var_decl_list_head* incompl_located_var_decl;
+
+  incompl_located_var_decl_list_head =
+    incompl_located_var_decl ';';
+
+  incompl_located_var_decl =
+    variable_name incompl_location ':' var_spec;
+
+  incompl_location =
+    'AT' '%' ('I' | 'Q' | 'M') '*';
+
+  var_spec =
+    simple_specification |
+    //subrange_specification |
+    //enumerated_specification |
+    array_specification |
+    structure_type_name |
+    'STRING' ('[' integer ']')? |
+    'WSTRING' ('[' integer ']')?;
+
+  // B.1.5 Program organization units
+
+  // B.1.5.1 Functions
+  
+  function_name =
+    standard_function_name |
+    derived_function_name;
+
+  standard_function_name =
+    identifier; // 2.5.1.5
+
+  derived_function_name =
+    identifier;
+
+  function_declaration =
+    'FUNCTION' derived_function_name ':' return_type_name function_var_declaration* function_body 'END_FUNCTION';
+
+  return_type_name =
+    {elementary} elementary_type_name |
+    {derived} derived_type_name;
+
+  function_var_declaration =
+    {io} io_var_declarations |
+    {function} function_var_decls;
+  
+  io_var_declarations =
+    {input} input_declarations |
+    {ouput} output_declarations |
+    {io} input_output_declarations;
+
+  function_var_decls =
+    'VAR' ('CONSTANT')? var2_init_decl_list 'END_VAR';
+
+  function_body =
+    //ladder_diagram |
+    //function_block_diagram |
+    //instruction_list |
+    statement_list;
+    //<other languages>
+
+  var2_init_decl_list =
+    var2_init_decl_list_head* var2_init_decl;
+
+  var2_init_decl_list_head =
+    var2_init_decl ';';
+
+  var2_init_decl =
+    {var1} var1_init_decl |
+    {array} array_var_init_decl |
+    {struct} structured_var_init_decl |
+    {string} string_var_declaration;
+
+  // B.1.5.2 Function blocks
+
+  function_block_type_name =
+    {standard} standard_function_block_name |
+    {derived} derived_function_block_name;
+
+  standard_function_block_name =
+    'SR' | 'RS' | 'R_TRIG' | 'F_TRIG' |
+    'CTU' | 'CTD' | 'CTUD' |
+    'TP' | 'TON' | 'TOF'; // 2.5.2.3
+
+  derived_function_block_name =
+    identifier;
+
+  function_block_declaration =
+    'FUNCTION_BLOCK' derived_function_block_name function_block_var_declarations* function_block_body 'END_FUNCTION_BLOCK';
+
+  function_block_var_declarations =
+    {io} io_var_declarations |
+    {other} other_var_declarations;
+
+  other_var_declarations =
+    {external} external_var_declarations |
+    {var} var_declarations |
+    {retentive} retentive_var_declarations |
+    {non_retentive} non_retentive_var_declarations |
+    {temp} temp_var_decls |
+    {incompl} incompl_located_var_declarations;
+
+  temp_var_decls =
+    'VAR_TEMP' temp_var_decl_list 'END_VAR';
+  
+  temp_var_decl_list =
+    temp_var_decl_list_head* temp_var_decl;
+
+  temp_var_decl_list_head =
+    temp_var_decl ';';
+
+  non_retentive_var_declarations =
+    'VAR' 'NON_RETAIN' var_init_decl_list 'END_VAR';
+
+  function_block_body =
+    statement_list;
+    // other langs;
+
+  // B.1.5.3 Programs
+
+  program_type_name =
+    identifier;
+
+  access_name =
+    identifier;
+
+  direction =
+    'READ_WRITE' |
+    'READ_ONLY';
+
+  program_declaration =
+    'PROGRAM' program_type_name program_var_declarations* function_block_body 'END_PROGRAM';
+
+  program_var_declarations =
+    io_var_declarations |
+    other_var_declarations |
+    located_var_declarations |
+    program_access_decls;
+
+  program_access_decls =
+    'VAR_ACCESS' program_access_decl_list 'END_VAR';
+
+  program_access_decl_list =
+    program_access_decl_list_head* program_access_decl;
+
+  program_access_decl_list_head =
+    program_access_decl ';';
+
+  program_access_decl =
+    access_name ':' symbolic_variable ':' non_generic_type_name direction?;
+
+  // B.3 Language ST (Structured Text)
+  
+  // B.3.1 Expressions
+
+  expression =
+    xor_expression expression_or_clause*;
+  
+  expression_or_clause =
+    'OR' xor_expression;
+
+  xor_expression =
+    and_expression expression_xor_clause*;
+
+  expression_xor_clause =
+    'XOR' and_expression;
+  
+  and_expression =
+    comparison expression_and_clause*;
+
+  expression_and_clause =
+    ('&' | 'AND') comparison;
+
+  comparison =
+    equ_expression expression_ne_clause*;
+
+  expression_ne_clause =
+    ('=' | '<>') equ_expression;
+
+  equ_expression =
+    add_expression expression_comparison_operator_clause*;
+
+  expression_comparison_operator_clause =
+    comparison_operator add_expression;
+
+  comparison_operator =
+    '<' | '>' | '<=' | '>=';
+
+  add_expression =
+    term expression_add_operator_clause*;
+
+  expression_add_operator_clause =
+    add_operator term;
+
+  add_operator =
+    sign;
+
+  term =
+    power_expression expression_mul_operator_clause*;
+
+  expression_mul_operator_clause =
+    mul_operator power_expression;
+
+  mul_operator =
+    '*' | '/' | 'MOD';
+
+  power_expression =
+    unary_expression expression_power_clause*;
+
+  expression_power_clause =
+    '**' unary_expression;
+
+  unary_expression =
+    unary_operator* primary_expression;
+
+  unary_operator =
+    '-' | 'NOT';
+
+  primary_expression =
+    constant |
+    //enumerated_value |
+    variable |
+    '(' expression ')' |
+    function_name '(' param_assignment_list ')';
+
+  param_assignment_list =
+    param_assignment_list_head* param_assignment;
+  
+  param_assignment_list_head =
+    param_assignment ',';
+
+  // B.3.2 Statements
+
+  statement_list =
+    statement_list_head+;
+
+  statement_list_head =
+    statement? ';';
+
+  statement =
+    assignment_statement |
+    subprogram_control_statement |
+    selection_statement |
+    iteration_statement;
+
+  // B.3.2.1 Assignment statements
+
+  assignment_statement =
+    variable ':=' expression;
+
+  // B.3.2.2 Subprogram control statements
+
+  subprogram_control_statement =
+    fb_invocation |
+    'RETURN';
+
+  fb_invocation =
+    fb_name '(' param_assignment_list? ')';
+
+  param_assignment =
+    (variable_name ':=')? expression |
+    ('NOT')? variable_name '=>' variable;
+
+  // B.3.2.3 Selection statements
+
+  selection_statement =
+    if_statement |
+    case_statement;
+
+  if_statement
+    'IF' expression 'THEN' statement_list elseif_statement* else_statement* 'END_IF';
+
+  elseif_statement =
+    'ELSEIF' expression 'THEN' statement_list;
+
+  else_statement =
+    'ELSE' statement_list;
+
+  case_statement =
+    'CASE' expression 'OF' case_element+ ('ELSE' statement_list)? 'END_CASE';
+
+  case_element =
+    case_list ':' statement_list;
+
+  case_list =
+    case_list_head* case_list_element;
+
+  case_list_head =
+    case_list_element ',';
+
+  case_list_element =
+    subrange |
+    signed_integer;
+    //enumerated_value;
+
+  // B.3.2.4 Iteration statements
+  
+  iteration_statement =
+    for_statement |
+    while_statement |
+    repeat_statement |
+    exit_statement;
+  
+  for_statement =
+    'FOR' control_variable ':=' for_list 'DO' statement_list 'END_FOR';
+
+  control_variable =
+    identifier;
+
+  for_list =
+    [from]:expression 'TO' [to]:expression ('BY' [by]:expression)?;
+
+  while_statement =
+    'WHILE' expression 'DO' statement_list 'END_WHILE';
+
+  repeat_statement =
+    'REPEAT' statement_list 'UNTIL' expression 'END_REPEAT';
+
+  exit_statement =
+    'EXIT';
+  
