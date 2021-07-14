@@ -6,25 +6,16 @@ Helpers
   common_character_representation =
     unicode_input_character - ['$' + ''' + '"' ] |
     '$$' |
-    '$L' |
-    '$N' |
-    '$P' |
-    '$R' |
-    '$T' |
-    '$l' |
-    '$n' |
-    '$p' |
-    '$r' |
-    '$t';
+    '$L' | '$N' | '$P' | '$R' | '$T' |
+    '$l' | '$n' | '$p' | '$r' | '$t';
 
 Tokens
 
   // B.1.1 Letters, digits and identifiers
 
-  // English alphabet
   letter =
     [0x0041..0x005a] |
-    [0x0061..0x007a];
+    [0x0061..0x007a]; // English alphabet
 
   digit =
     '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
@@ -685,17 +676,10 @@ Productions
   // B.1.5.1 Functions
   
   function_name =
-    standard_function_name |
-    derived_function_name;
-
-  standard_function_name =
-    identifier; // 2.5.1.5
-
-  derived_function_name =
-    identifier;
+    identifier; // custom + 2.5.1.5
 
   function_declaration =
-    'FUNCTION' derived_function_name ':' return_type_name function_var_declaration* function_body 'END_FUNCTION';
+    'FUNCTION' function_name ':' return_type_name function_var_declaration* function_body 'END_FUNCTION';
 
   return_type_name =
     {elementary} elementary_type_name |
