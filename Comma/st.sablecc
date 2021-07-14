@@ -13,7 +13,7 @@ Tokens
 
   squote =
     ''';
-  
+
   dquote =
     '"';
 
@@ -49,7 +49,7 @@ Tokens
 
   lparen =
     '(';
-  
+
   rparen =
     ')';
 
@@ -58,6 +58,39 @@ Tokens
 
   rbrack =
     ']';
+
+  percent =
+    '%';
+
+  or_token =
+    'OR';
+
+  xor_token =
+    'XOR';
+
+  and_token_full =
+    '&' | 'AND';
+
+  eq_token_full =
+    '=' | '<>';
+
+  comparison_operator =
+    '<' | '>' | '<=' | '>=';
+
+  mul_operator =
+    '*' | '/' | 'MOD';
+
+  not_token =
+    'NOT';
+
+  power_token =
+    '**';
+
+  return_token =
+    'RETURN';
+
+  arrow_token =
+    '=>';
 
   // B.1.1 Letters, digits and identifiers
 
@@ -187,7 +220,7 @@ Tokens
 
   minute_identifier =
     'm';
-  
+
   second_identifier =
     's';
 
@@ -217,6 +250,134 @@ Tokens
 
   end_var_token =
     'END_VAR';
+
+  constant_token =
+    'CONSTANT';
+
+  var_input_token =
+    'VAR_INPUT';
+
+  var_output_token =
+    'VAR_OUTPUT';
+
+  var_in_out_token =
+    'VAR_IN_OUT';
+
+  var_external_token =
+    'VAR_EXTERNAL';
+
+  var_temp_token =
+    'VAR_TEMP';
+
+  var_access_token =
+    'VAR_ACCESS';
+
+  function_token =
+    'FUNCTION';
+
+  end_function_token =
+    'END_FUNCTION';
+
+  function_block_token =
+    'FUNCTION_BLOCK';
+
+  end_function_block_token =
+    'END_FUNCTION_BLOCK';
+
+  program_token =
+    'PROGRAM';
+
+  end_program_token =
+    'END_PROGRAM';
+
+  at_token =
+    'AT';
+
+  if_token =
+    'IF';
+
+  then_token =
+    'THEN';
+
+  end_if_token =
+    'END_IF';
+
+  else_if_token =
+    'ELSEIF';
+
+  else_token =
+    'ELSE';
+
+  case_token =
+    'CASE';
+
+  end_case_token =
+    'END_CASE';
+
+  for_token =
+    'FOR';
+
+  do_token =
+    'DO';
+
+  end_for_token =
+    'END_FOR';
+
+  to_token =
+    'TO';
+
+  by_token =
+    'BY';
+
+  while_token =
+    'WHILE';
+
+  end_while_token =
+    'END_WHILE';
+
+  repeat_token =
+    'REPEAT';
+
+  end_repeat_token =
+    'END_REPEAT';
+
+  until_token =
+    'UNTIL';
+
+  exit_token =
+    'EXIT';
+
+  location_prefix =
+    'I' | 'Q' | 'M';
+
+  size_prefix =
+    'X' | 'B' | 'W' | 'D' | 'L';
+
+  incompl_location =
+    at_token percent ('I' | 'Q' | 'M') '*';
+
+  edge =
+    'R_EDGE' |
+    'F_EDGE';
+
+  retain_token =
+    'RETAIN';
+
+  non_retain_token =
+    'NON_RETAIN';
+
+  retain =
+    'RETAIN' |
+    'NON_RETAIN';
+
+  standard_function_block_name =
+    'SR' | 'RS' | 'R_TRIG' | 'F_TRIG' |
+    'CTU' | 'CTD' | 'CTUD' |
+    'TP' | 'TON' | 'TOF'; // 2.5.2.3
+
+  direction =
+    'READ_WRITE' |
+    'READ_ONLY';
 
 Productions
 
@@ -251,7 +412,6 @@ Productions
     {escaped} dollar dquote |
     {quote} squote |
     {code} dollar [fst]:hex_digit [snd]:hex_digit [trd]:hex_digit [fth]:hex_digit;
-
 
   // B.1.3 Data types
 
@@ -292,20 +452,32 @@ Productions
     {integer} integer_literal |
     {real} real_literal;
 
+  integer_type_name_hashed =
+    integer_type_name hash;
+
   integer_literal =
-     (integer_type_name hash)? signed_integer_literal;
+    integer_type_name_hashed? signed_integer_literal;
+
+  real_type_name_hashed =
+    real_type_name hash;
 
   real_literal =
-    (real_type_name hash)? signed_integer dot integer exponent?;
+    real_type_name_hashed? signed_integer dot integer exponent?;
 
   exponent =
     exponent_sign sign? integer;
 
+  bit_string_literal_type_name_hashed =
+    bit_string_literal_type_name hash;
+
   bit_string_literal =
-    (bit_string_literal_type_name hash)?  unsigned_integer_literal;
+    bit_string_literal_type_name_hashed?  unsigned_integer_literal;
+
+  bool_type_name_hashed =
+    bool_type_name hash;
 
   boolean_literal =
-    {numeric} (bool_type_name hash)? bit |
+    {numeric} bool_type_name_hashed? bit |
     {literal} true_false_literal;
 
   // B.1.2.2 Character strings
@@ -338,8 +510,11 @@ Productions
     fixed_point day_identifier |
     integer day_identifier underscore? hours;
 
+  fixed_point_real_part =
+    dot integer;
+
   fixed_point =
-    integer (dot [real]:integer)?;
+    integer fixed_point_real_part?;
 
   hours =
     fixed_point hour_identifier |
@@ -461,8 +636,11 @@ Productions
   array_type_declaration =
     array_type_name colon array_spec_init;
 
+  array_spec_initialization =
+    colon_eq array_initialization;
+
   array_spec_init =
-    array_specification (colon_eq array_initialization);
+    array_specification array_spec_initialization?;
 
   array_specification =
     {named} array_type_name |
@@ -494,8 +672,11 @@ Productions
     {structure_declaration} structure_declaration |
     {initialized} initialized_structure;
 
+  initialized_structure_initialization =
+    colon_eq structure_initialization;
+
   initialized_structure =
-    structure_type_name (colon_eq structure_initialization)?;
+    structure_type_name initialized_structure_initialization?;
 
   structure_declaration =
     struct_token structure_element_declaration_list end_struct_token;
@@ -528,8 +709,18 @@ Productions
   structure_element_initialization =
     structure_element_name colon_eq initial_element;
 
+  string_wstring_type_name =
+    {string} string1_type_name |
+    {wstring} wstring_type_name;
+
+  string_type_declaration_len_spec =
+    lbrack [len]:integer rbrack;
+
+  string_type_declaration_initialization =
+    colon_eq [val]:character_string;
+
   string_type_declaration =
-    string_type_name colon (string1_type_name | wstring_type_name) (lbrack [len]:integer rbrack)? (colon_eq [val]:character_string)?;
+    string_type_name colon string_wstring_type_name string_type_declaration_len_spec? string_type_declaration_initialization?;
 
   // B.1.4 Variables
 
@@ -547,16 +738,10 @@ Productions
   // B.1.4.1 Directly represented variables
 
   direct_variable =
-    '%' location_prefix size_prefix? integer prefixed_integer*;
+    percent location_prefix size_prefix? integer prefixed_integer*;
 
   prefixed_integer =
     dot integer;
-
-  location_prefix =
-    'I' | 'Q' | 'M';
-
-  size_prefix =
-    'X' | 'B' | 'W' | 'D' | 'L';
 
   // B.1.4.2 Multi-element variables
 
@@ -591,7 +776,7 @@ Productions
   // B.1.4.3 Declaration and initialization
 
   input_declarations =
-    'VAR_INPUT' retain input_declaration_list end_var_token;
+    var_input_token retain input_declaration_list end_var_token;
 
   input_declaration_list =
     input_declaration_list_head* input_declaration;
@@ -605,10 +790,6 @@ Productions
 
   edge_declaration =
     var1_list colon bool_type_name edge;
-
-  edge =
-    'R_EDGE' |
-    'F_EDGE';
 
   var_init_decl =
     {var} var1_init_decl |
@@ -637,8 +818,11 @@ Productions
   structured_var_init_decl =
     var1_list colon initialized_structure;
 
+  fb_name_decl_initialization =
+    colon_eq structure_initialization;
+
   fb_name_decl =
-    fb_name_list colon function_block_type_name (colon_eq structure_initialization)?;
+    fb_name_list colon function_block_type_name fb_name_decl_initialization?;
 
   fb_name_list =
     fb_name_list_head* fb_name;
@@ -650,11 +834,7 @@ Productions
     identifier;
 
   output_declarations =
-    'VAR_OUTPUT' retain var_init_decl_list end_var_token;
-
-  retain =
-    'RETAIN' |
-    'NON_RETAIN';
+    var_output_token retain var_init_decl_list end_var_token;
 
   var_init_decl_list =
     var_init_decl_list_head* var_init_decl;
@@ -663,7 +843,7 @@ Productions
     var_init_decl semicolon;
 
   input_output_declarations =
-    'VAR_IN_OUT' var_declaration_list end_var_token;
+    var_in_out_token var_declaration_list end_var_token;
 
   var_declaration_list =
     var_declaration_list_head* var_declaration;
@@ -696,13 +876,17 @@ Productions
     var1_list colon structure_type_name;
 
   var_declarations =
-    var_token ('CONSTANT')? var_init_decl_list end_var_token;
+    var_token constant_token? var_init_decl_list end_var_token;
 
   retentive_var_declarations =
-    var_token 'RETAIN' var_init_decl_list end_var_token;
+    var_token retain_token var_init_decl_list end_var_token;
+
+  constant_token_or_retain =
+    constant_token |
+    retain;
 
   located_var_declarations =
-    var_token ('CONSTANT' | 'RETAIN' | 'NON_RETAIN')? located_var_decl_list end_var_token;
+    var_token constant_token_or_retain? located_var_decl_list end_var_token;
 
   located_var_decl_list =
     located_var_decl_list_head* located_var_decl;
@@ -714,7 +898,7 @@ Productions
     variable_name? location colon located_var_spec_init;
 
   external_var_declarations =
-    'VAR_EXTERNAL' ('CONSTANT')? external_declaration_list end_var_token;
+    var_external_token constant_token? external_declaration_list end_var_token;
 
   external_declaration_list =
     external_declaration_list_head* external_declaration;
@@ -746,7 +930,7 @@ Productions
     double_byte_string_spec;
 
   location =
-    'AT' direct_variable;
+    at_token direct_variable;
 
   string_var_declaration =
     {single} single_byte_string_var_declaration |
@@ -755,14 +939,23 @@ Productions
   single_byte_string_var_declaration =
     var1_list colon single_byte_string_spec;
 
+  brack_integer =
+    lbrack integer rbrack;
+
+  single_byte_string_spec_initialization =
+    colon_eq single_byte_character_string;
+
   single_byte_string_spec =
-    string1_type_name (lbrack integer rbrack)? (colon_eq single_byte_character_string)?;
+    string1_type_name brack_integer? single_byte_string_spec_initialization?;
 
   double_byte_string_var_declaration =
     var1_list colon double_byte_string_spec;
 
-  double_byte_string_spec ::=
-    wstring_type_name (lbrack integer rbrack)? (colon_eq double_byte_character_string)?;
+  double_byte_string_spec_initialization =
+    colon_eq double_byte_character_string;
+
+  double_byte_string_spec =
+    wstring_type_name brack_integer? double_byte_string_spec_initialization?;
 
   incompl_located_var_declarations =
     var_token retain incompl_located_var_decl_list end_var_token;
@@ -776,17 +969,14 @@ Productions
   incompl_located_var_decl =
     variable_name incompl_location colon var_spec;
 
-  incompl_location =
-    'AT' '%' ('I' | 'Q' | 'M') '*';
-
   var_spec =
     simple_specification |
     //subrange_specification |
     //enumerated_specification |
     array_specification |
     structure_type_name |
-    string1_type_name (lbrack integer rbrack)? |
-    wstring_type_name (lbrack integer rbrack)?;
+    string1_type_name brack_integer? |
+    wstring_type_name brack_integer?;
 
   // B.1.5 Program organization units
 
@@ -796,7 +986,7 @@ Productions
     identifier; // custom + 2.5.1.5
 
   function_declaration =
-    'FUNCTION' function_name colon return_type_name function_var_declaration* function_body 'END_FUNCTION';
+    function_token function_name colon return_type_name function_var_declaration* function_body end_function_token;
 
   return_type_name =
     {elementary} elementary_type_name |
@@ -812,7 +1002,7 @@ Productions
     {io} input_output_declarations;
 
   function_var_decls =
-    var_token ('CONSTANT')? var2_init_decl_list end_var_token;
+    var_token constant_token? var2_init_decl_list end_var_token;
 
   function_body =
     //ladder_diagram |
@@ -839,16 +1029,11 @@ Productions
     {standard} standard_function_block_name |
     {derived} derived_function_block_name;
 
-  standard_function_block_name =
-    'SR' | 'RS' | 'R_TRIG' | 'F_TRIG' |
-    'CTU' | 'CTD' | 'CTUD' |
-    'TP' | 'TON' | 'TOF'; // 2.5.2.3
-
   derived_function_block_name =
     identifier;
 
   function_block_declaration =
-    'FUNCTION_BLOCK' derived_function_block_name function_block_var_declarations* function_block_body 'END_FUNCTION_BLOCK';
+    function_block_token derived_function_block_name function_block_var_declarations* function_block_body end_function_block_token;
 
   function_block_var_declarations =
     {io} io_var_declarations |
@@ -863,7 +1048,7 @@ Productions
     {incompl} incompl_located_var_declarations;
 
   temp_var_decls =
-    'VAR_TEMP' temp_var_decl_list end_var_token;
+    var_temp_token temp_var_decl_list end_var_token;
 
   temp_var_decl_list =
     temp_var_decl_list_head* temp_var_decl;
@@ -872,7 +1057,7 @@ Productions
     temp_var_decl semicolon;
 
   non_retentive_var_declarations =
-    var_token 'NON_RETAIN' var_init_decl_list end_var_token;
+    var_token non_retain_token var_init_decl_list end_var_token;
 
   function_block_body =
     statement_list;
@@ -886,12 +1071,8 @@ Productions
   access_name =
     identifier;
 
-  direction =
-    'READ_WRITE' |
-    'READ_ONLY';
-
   program_declaration =
-    'PROGRAM' program_type_name program_var_declarations* function_block_body 'END_PROGRAM';
+    program_token program_type_name program_var_declarations* function_block_body end_program_token;
 
   program_var_declarations =
     io_var_declarations |
@@ -900,7 +1081,7 @@ Productions
     program_access_decls;
 
   program_access_decls =
-    'VAR_ACCESS' program_access_decl_list end_var_token;
+    var_access_token program_access_decl_list end_var_token;
 
   program_access_decl_list =
     program_access_decl_list_head* program_access_decl;
@@ -919,34 +1100,31 @@ Productions
     xor_expression expression_or_clause*;
 
   expression_or_clause =
-    'OR' xor_expression;
+    or_token xor_expression;
 
   xor_expression =
     and_expression expression_xor_clause*;
 
   expression_xor_clause =
-    'XOR' and_expression;
+    xor_token and_expression;
 
   and_expression =
     comparison expression_and_clause*;
 
   expression_and_clause =
-    ('&' | 'AND') comparison;
+    and_token_full comparison;
 
   comparison =
     equ_expression expression_ne_clause*;
 
   expression_ne_clause =
-    ('=' | '<>') equ_expression;
+    eq_token_full equ_expression;
 
   equ_expression =
     add_expression expression_comparison_operator_clause*;
 
   expression_comparison_operator_clause =
     comparison_operator add_expression;
-
-  comparison_operator =
-    '<' | '>' | '<=' | '>=';
 
   add_expression =
     term expression_add_operator_clause*;
@@ -963,20 +1141,17 @@ Productions
   expression_mul_operator_clause =
     mul_operator power_expression;
 
-  mul_operator =
-    '*' | '/' | 'MOD';
-
   power_expression =
     unary_expression expression_power_clause*;
 
   expression_power_clause =
-    '**' unary_expression;
+    power_token unary_expression;
 
   unary_expression =
     unary_operator* primary_expression;
 
   unary_operator =
-    dash | 'NOT';
+    dash | not_token;
 
   primary_expression =
     constant |
@@ -1014,14 +1189,17 @@ Productions
 
   subprogram_control_statement =
     fb_invocation |
-    'RETURN';
+    return_token;
 
   fb_invocation =
     fb_name lparen param_assignment_list? rparen;
 
+  param_assignment_lvalue =
+    variable_name colon_eq;
+
   param_assignment =
-    (variable_name colon_eq)? expression |
-    ('NOT')? variable_name '=>' variable;
+    param_assignment_lvalue? expression |
+    not_token? variable_name arrow_token variable;
 
   // B.3.2.3 Selection statements
 
@@ -1029,17 +1207,20 @@ Productions
     if_statement |
     case_statement;
 
-  if_statement
-    'IF' expression 'THEN' statement_list elseif_statement* else_statement* 'END_IF';
+  if_statement =
+    if_token expression then_token statement_list elseif_statement* else_statement* end_if_token;
 
   elseif_statement =
-    'ELSEIF' expression 'THEN' statement_list;
+    else_if_token expression then_token statement_list;
 
   else_statement =
-    'ELSE' statement_list;
+    else_token statement_list;
+
+  case_statement_else_clause =
+    else_token statement_list;
 
   case_statement =
-    'CASE' expression 'OF' case_element+ ('ELSE' statement_list)? 'END_CASE';
+    case_token expression of_token case_element+ case_statement_else_clause? end_case_token;
 
   case_element =
     case_list colon statement_list;
@@ -1064,19 +1245,22 @@ Productions
     exit_statement;
 
   for_statement =
-    'FOR' control_variable colon_eq for_list 'DO' statement_list 'END_FOR';
+    for_token control_variable colon_eq for_list do_token statement_list end_for_token;
 
   control_variable =
     identifier;
 
+  for_list_by_clause =
+    by_token [by]:expression;
+
   for_list =
-    [from]:expression 'TO' [to]:expression ('BY' [by]:expression)?;
+    [from]:expression to_token [to]:expression for_list_by_clause?;
 
   while_statement =
-    'WHILE' expression 'DO' statement_list 'END_WHILE';
+    while_token expression do_token statement_list end_while_token;
 
   repeat_statement =
-    'REPEAT' statement_list 'UNTIL' expression 'END_REPEAT';
+    repeat_token statement_list until_token expression end_repeat_token;
 
   exit_statement =
-    'EXIT';
+    exit_token;
