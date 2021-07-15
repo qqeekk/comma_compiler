@@ -1,7 +1,33 @@
 Helpers
 
+  sign =
+    '+' | '-';
+
+  bit =
+    '0' | '1';
+
+  digit =
+    '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
+
+  octal_digit =
+    '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7';
+
+  hex_digit =
+    '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+
   unicode_input_character =
     [0..0xffff];
+
+  letter =
+    [0x0041..0x005a] |
+    [0x0061..0x007a]; // English alphabet
+
+  letter_or_digit =
+    letter |
+    digit;
+
+  underscored_letter_or_digit =
+    ('_')? letter_or_digit;
 
   common_character_representation =
     [unicode_input_character - ['$' + [''' + '"']]] |
@@ -9,13 +35,62 @@ Helpers
     '$L' | '$N' | '$P' | '$R' | '$T' |
     '$l' | '$n' | '$p' | '$r' | '$t';
 
-Tokens
+  underscored_digit =
+    ('_')? digit;
+
+  integer =
+    digit underscored_digit*;
+
+  signed_integer =
+    sign? integer;
+
+  underscored_bit =
+    ('_')? bit;
+
+  binary_integer =
+    '2#' bit underscored_bit*;
+
+  underscored_octal_digit =
+    ('_')? octal_digit;
+
+  octal_integer =
+    '8#' octal_digit underscored_octal_digit*;
+
+  underscored_hex_digit =
+    ('_')? hex_digit;
+
+  hex_integer =
+    '16#' hex_digit underscored_hex_digit*;
+  
+  dollar =
+    '$';
 
   squote =
     ''';
 
   dquote =
     '"';
+
+  single_byte_character_representation =
+    common_character_representation |
+    dollar squote |
+    dquote |
+    dollar hex_digit hex_digit;
+
+  double_byte_character_representation =
+    common_character_representation |
+    dollar dquote |
+    squote |
+    dollar hex_digit hex_digit hex_digit hex_digit;
+
+
+Tokens
+
+  bit =
+    bit;
+
+  sign =
+    '+' | '-';
 
   dollar =
     '$';
@@ -94,39 +169,25 @@ Tokens
 
   // B.1.1 Letters, digits and identifiers
 
-  letter =
-    [0x0041..0x005a] |
-    [0x0061..0x007a]; // English alphabet
-
-  digit =
-    '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
-
-  octal_digit =
-    '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7';
-
-  hex_digit =
-    '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
-
   identifier =
     (letter | '_' letter_or_digit) underscored_letter_or_digit*;
 
-  letter_or_digit =
-    letter |
-    digit;
+  single_byte_character_string =
+    squote single_byte_character_representation* squote;
 
-  underscored_letter_or_digit =
-    ('_')? letter_or_digit;
+  double_byte_character_string =
+    dquote double_byte_character_representation* dquote;
 
   // B.1.2.1 Numeric literals
-
-  sign =
-    '+' | '-';
 
   exponent_sign =
     'E' | 'e';
 
-  bit =
-    '0' | '1';
+  signed_integer =
+    signed_integer;
+
+  integer =
+    integer;
 
   signed_integer_literal =
     signed_integer |
@@ -140,33 +201,6 @@ Tokens
     octal_integer |
     hex_integer;
 
-  signed_integer =
-    sign? integer;
-
-  integer =
-    digit underscored_digit*;
-
-  underscored_digit =
-    ('_')? digit;
-
-  binary_integer =
-    '2#' bit underscored_bit*;
-
-  underscored_bit =
-    ('_')? bit;
-
-  octal_integer =
-    '8#' octal_digit underscored_octal_digit*;
-
-  underscored_octal_digit =
-    ('_')? octal_digit;
-
-  hex_integer =
-    '16#' hex_digit underscored_hex_digit*;
-
-  underscored_hex_digit =
-    ('_')? hex_digit;
-
   string1_type_name =
     'STRING';
 
@@ -177,7 +211,7 @@ Tokens
     'TIME';
 
   time_type_name_full =
-    'T' | time_type_name;
+    'T' | 'TIME';
 
   signed_integer_type_name =
     'SINT' | 'INT' | 'DINT' | 'LINT';
@@ -354,7 +388,7 @@ Tokens
     'X' | 'B' | 'W' | 'D' | 'L';
 
   incompl_location =
-    at_token percent ('I' | 'Q' | 'M') '*';
+    'AT' '%' ('I' | 'Q' | 'M') '*';
 
   edge =
     'R_EDGE' |
@@ -395,29 +429,11 @@ Productions
 
   // B.1.2.2 Character strings
 
-  single_byte_character_string =
-    squote single_byte_character_representation* squote;
-
-  double_byte_character_string =
-    dquote double_byte_character_representation* dquote;
-
-  single_byte_character_representation =
-    {common} common_character_representation |
-    {escaped} dollar squote |
-    {quote} dquote |
-    {code} dollar [fst]:hex_digit [snd]:hex_digit;
-
-  double_byte_character_representation =
-    {common} common_character_representation |
-    {escaped} dollar dquote |
-    {quote} squote |
-    {code} dollar [fst]:hex_digit [snd]:hex_digit [trd]:hex_digit [fth]:hex_digit;
-
   // B.1.3 Data types
 
   non_generic_type_name =
-    elementary_type_name |
-    derived_type_name;
+    {elementary} elementary_type_name |
+    {derived} derived_type_name;
 
   // B.1.3.1 Elementary data types
 
@@ -500,15 +516,15 @@ Productions
     time_type_name_full hash dash? interval;
 
   interval =
-    days |
-    hours |
-    minutes |
-    seconds |
-    milliseconds;
+    {days} days |
+    {hours} hours |
+    {minutes} minutes |
+    {seconds} seconds |
+    {milliseconds} milliseconds;
 
   days =
-    fixed_point day_identifier |
-    integer day_identifier underscore? hours;
+    {decimal} fixed_point day_identifier |
+    {hourly} integer day_identifier underscore? hours;
 
   fixed_point_real_part =
     dot integer;
@@ -517,16 +533,16 @@ Productions
     integer fixed_point_real_part?;
 
   hours =
-    fixed_point hour_identifier |
-    integer hour_identifier underscore? minutes;
+    {decimal} fixed_point hour_identifier |
+    {minutely} integer hour_identifier underscore? minutes;
 
   minutes =
-    fixed_point minute_identifier  |
-    integer minute_identifier underscore? seconds;
+    {decimal} fixed_point minute_identifier  |
+    {secondly} integer minute_identifier underscore? seconds;
 
   seconds =
-    fixed_point second_identifier |
-    integer second_identifier underscore? milliseconds;
+    {decimal} fixed_point second_identifier |
+    {millisecondly} integer second_identifier underscore? milliseconds;
 
   milliseconds =
     fixed_point millisecond_identifier;
@@ -537,7 +553,7 @@ Productions
     time_of_day_type_name_full hash daytime;
 
   daytime =
-    day_hour colon day_minute colon day_second;
+    day_hour [fst]:colon day_minute [snd]:colon day_second;
 
   day_hour =
     integer;
@@ -552,7 +568,7 @@ Productions
     date_type_name_full hash date_literal;
 
   date_literal =
-    year dash month dash day;
+    year [fst]:dash month [snd]:dash day;
 
   year =
     integer;
@@ -595,19 +611,22 @@ Productions
     identifier;
 
   data_type_declaration_list =
-    data_type_declaration_list_head* type_declaration;
+    type_declaration data_type_declaration_list_tail*;
 
-  data_type_declaration_list_head =
-    type_declaration semicolon;
+  data_type_declaration_list_tail =
+    semicolon type_declaration;
 
   data_type_declaration =
     type_token data_type_declaration_list end_type_token;
 
   type_declaration =
-    {single} single_element_type_declaration |
-    {array} array_type_declaration |
-    {struct} structure_type_declaration |
-    {string} string_type_declaration;
+    {single_type} single_element_type_declaration |
+    {array_type} array_type_declaration |
+    {struct_type} structure_type_declaration |
+    {string_type} string_type_declaration;
+
+  array_type_declaration =
+    array_type_name colon array_spec_init;
 
   single_element_type_declaration =
     simple_type_declaration;
@@ -617,24 +636,24 @@ Productions
   simple_type_declaration =
     simple_type_name colon simple_spec_init;
 
+  simple_spec_initialization =
+    colon_eq constant;
+
   simple_spec_init =
-    simple_specification colon_eq constant?;
+    simple_specification simple_spec_initialization?;
 
   simple_specification =
-    {elementary} elementary_type_name |
-    {simple} simple_type_name;
+    {elementary} elementary_type_name; // |
+    //{simple} simple_type_name; // todo: remove
 
   subrange =
-    signed_integer dot_dot signed_integer;
+    [fst]:signed_integer dot_dot [snd]:signed_integer;
 
   subrange_list =
     subrange_list_head* subrange;
 
   subrange_list_head =
     subrange comma;
-
-  array_type_declaration =
-    array_type_name colon array_spec_init;
 
   array_spec_initialization =
     colon_eq array_initialization;
@@ -643,7 +662,7 @@ Productions
     array_specification array_spec_initialization?;
 
   array_specification =
-    {named} array_type_name |
+    //{named} array_type_name | // todo: temporary disabled
     {inline} array_token lbrack subrange_list rbrack of_token non_generic_type_name;
 
   array_initialization =
@@ -720,17 +739,28 @@ Productions
     colon_eq [val]:character_string;
 
   string_type_declaration =
-    string_type_name colon string_wstring_type_name string_type_declaration_len_spec? string_type_declaration_initialization?;
+    // string_type_name colon string_wstring_type_name string_type_declaration_len_spec? string_type_declaration_initialization?;
+    {len} string_type_name colon string_wstring_type_name string_type_declaration_len_spec string_type_declaration_initialization? |
+    {len_spec} string_type_name colon string_wstring_type_name string_type_declaration_initialization;
 
   // B.1.4 Variables
 
   variable =
-    direct_variable |
-    symbolic_variable;
+    {direct_variable} direct_variable |
+    {symbolic_variable} symbolic_variable;
+
+  variable_complex =
+    {direct_variable} direct_variable |
+    {symbolic_variable} symbolic_variable_complex;
 
   symbolic_variable =
-    variable_name |
-    multi_element_variable;
+    {variable} variable_name |
+    {array} symbolic_variable subscript_list |
+    {struct} symbolic_variable dot field_selector;
+
+  symbolic_variable_complex =
+    {array} symbolic_variable subscript_list |
+    {struct} symbolic_variable dot field_selector;
 
   variable_name =
     identifier;
@@ -745,16 +775,6 @@ Productions
 
   // B.1.4.2 Multi-element variables
 
-  multi_element_variable =
-    array_variable |
-    structured_variable;
-
-  array_variable =
-    subscripted_variable subscript_list;
-
-  subscripted_variable =
-    symbolic_variable;
-
   subscript_list =
     subscript_list_head* subscript;
 
@@ -763,12 +783,6 @@ Productions
 
   subscript =
     expression;
-
-  structured_variable =
-    record_variable dot field_selector;
-
-  record_variable =
-    symbolic_variable;
 
   field_selector =
     identifier;
@@ -793,7 +807,7 @@ Productions
 
   var_init_decl =
     {var} var1_init_decl |
-    {array} array_var_init_decl |
+    {array_var} array_var_init_decl |
     {struct} structured_var_init_decl |
     {fb_name} fb_name_decl |
     {string} string_var_declaration;
@@ -848,18 +862,18 @@ Productions
   var_declaration_list =
     var_declaration_list_head* var_declaration;
 
-  var2_init_decl_list_head =
+  var_declaration_list_head =
     var_declaration semicolon;
 
   var_declaration =
-    temp_var_decl |
-    fb_name_decl;
+    {temp} temp_var_decl |
+    {fb_name} fb_name_decl;
 
   temp_var_decl =
-    var1_declaration |
-    array_var_declaration |
-    structured_var_declaration |
-    string_var_declaration;
+    {var} var1_declaration |
+    {array} array_var_declaration |
+    {struct} structured_var_declaration |
+    {string} string_var_declaration;
 
   var1_declaration =
     var1_list colon var1_declaration_specification;
@@ -882,8 +896,8 @@ Productions
     var_token retain_token var_init_decl_list end_var_token;
 
   constant_token_or_retain =
-    constant_token |
-    retain;
+    {constant} constant_token |
+    {retain} retain;
 
   located_var_declarations =
     var_token constant_token_or_retain? located_var_decl_list end_var_token;
@@ -910,24 +924,24 @@ Productions
     global_var_name colon external_declaration_specification;
 
   external_declaration_specification =
-    simple_specification |
-    subrange_specification |
-    enumerated_specification |
-    array_specification |
-    structure_type_name |
-    function_block_type_name;
+    {simple} simple_specification |
+    //{subrange} subrange_specification |
+    //enumerated_specification |
+    {array} array_specification |
+    {struct} structure_type_name |
+    {fb} function_block_type_name;
 
   global_var_name =
     identifier;
 
   located_var_spec_init =
-    simple_spec_init |
+    {simple} simple_spec_init |
     //subrange_spec_init |
     //enumerated_spec_init |
-    array_spec_init |
-    initialized_structure |
-    single_byte_string_spec |
-    double_byte_string_spec;
+    {array} array_spec_init |
+    {struct} initialized_structure |
+    {sstring} single_byte_string_spec |
+    {dstring} double_byte_string_spec;
 
   location =
     at_token direct_variable;
@@ -970,13 +984,13 @@ Productions
     variable_name incompl_location colon var_spec;
 
   var_spec =
-    simple_specification |
+    {simple} simple_specification |
     //subrange_specification |
     //enumerated_specification |
-    array_specification |
-    structure_type_name |
-    string1_type_name brack_integer? |
-    wstring_type_name brack_integer?;
+    {array} array_specification |
+    {struct} structure_type_name |
+    {string} string1_type_name brack_integer? |
+    {wstring} wstring_type_name brack_integer?;
 
   // B.1.5 Program organization units
 
@@ -1075,10 +1089,10 @@ Productions
     program_token program_type_name program_var_declarations* function_block_body end_program_token;
 
   program_var_declarations =
-    io_var_declarations |
-    other_var_declarations |
-    located_var_declarations |
-    program_access_decls;
+    {io} io_var_declarations |
+    {other} other_var_declarations |
+    {located} located_var_declarations |
+    {access} program_access_decls;
 
   program_access_decls =
     var_access_token program_access_decl_list end_var_token;
@@ -1090,75 +1104,60 @@ Productions
     program_access_decl semicolon;
 
   program_access_decl =
-    access_name colon symbolic_variable colon non_generic_type_name direction?;
+    access_name [fst]:colon symbolic_variable [snd]:colon non_generic_type_name direction?;
 
   // B.3 Language ST (Structured Text)
 
   // B.3.1 Expressions
 
   expression =
-    xor_expression expression_or_clause*;
-
-  expression_or_clause =
-    or_token xor_expression;
+    {or} expression or_token xor_expression |
+    {unary_expression} xor_expression;
 
   xor_expression =
-    and_expression expression_xor_clause*;
-
-  expression_xor_clause =
-    xor_token and_expression;
+    {xor} xor_expression xor_token and_expression |
+    {unary} and_expression;
 
   and_expression =
-    comparison expression_and_clause*;
-
-  expression_and_clause =
-    and_token_full comparison;
+    {and} and_expression and_token_full comparison |
+    {unary} comparison;
 
   comparison =
-    equ_expression expression_ne_clause*;
-
-  expression_ne_clause =
-    eq_token_full equ_expression;
+    {comparison} comparison eq_token_full equ_expression |
+    {unary} equ_expression;
 
   equ_expression =
-    add_expression expression_comparison_operator_clause*;
-
-  expression_comparison_operator_clause =
-    comparison_operator add_expression;
+    {equ} equ_expression comparison_operator add_expression |
+    {unary} add_expression;
 
   add_expression =
-    term expression_add_operator_clause*;
-
-  expression_add_operator_clause =
-    add_operator term;
+    {add} add_expression add_operator term |
+    {unary} term;
 
   add_operator =
     sign;
 
   term =
-    power_expression expression_mul_operator_clause*;
-
-  expression_mul_operator_clause =
-    mul_operator power_expression;
+    {mul} term mul_operator power_expression |
+    {term} power_expression;
 
   power_expression =
-    unary_expression expression_power_clause*;
-
-  expression_power_clause =
-    power_token unary_expression;
+    {power} power_expression power_token unary_expression |
+    {unary} unary_expression;
 
   unary_expression =
     unary_operator* primary_expression;
 
   unary_operator =
-    dash | not_token;
+    {dash} dash |
+    {not} not_token;
 
   primary_expression =
-    constant |
+    {constant} constant |
     //enumerated_value |
-    variable |
-    lparen expression rparen |
-    function_name lparen param_assignment_list rparen;
+    {variable} variable |
+    {paren} lparen expression rparen |
+    {call} function_name lparen param_assignment_list rparen;
 
   param_assignment_list =
     param_assignment_list_head* param_assignment;
@@ -1174,38 +1173,30 @@ Productions
   statement_list_head =
     statement? semicolon;
 
+  // First two result in shift-reduce
   statement =
-    assignment_statement |
-    subprogram_control_statement |
-    selection_statement |
-    iteration_statement;
+    {assign} variable_name colon_eq expression |
+    {call} fb_name lparen param_assignment_list? rparen |
+    {assign2} variable_complex colon_eq expression |
+    {return} return_token |
+    {selection} selection_statement |
+    {iter} iteration_statement;
 
-  // B.3.2.1 Assignment statements
-
-  assignment_statement =
-    variable colon_eq expression;
 
   // B.3.2.2 Subprogram control statements
-
-  subprogram_control_statement =
-    fb_invocation |
-    return_token;
-
-  fb_invocation =
-    fb_name lparen param_assignment_list? rparen;
 
   param_assignment_lvalue =
     variable_name colon_eq;
 
   param_assignment =
-    param_assignment_lvalue? expression |
-    not_token? variable_name arrow_token variable;
+    {expr} param_assignment_lvalue? expression |
+    {arrow} not_token? variable_name arrow_token variable;
 
   // B.3.2.3 Selection statements
 
   selection_statement =
-    if_statement |
-    case_statement;
+    {if} if_statement |
+    {case} case_statement;
 
   if_statement =
     if_token expression then_token statement_list elseif_statement* else_statement* end_if_token;
@@ -1232,17 +1223,17 @@ Productions
     case_list_element comma;
 
   case_list_element =
-    subrange |
-    signed_integer;
+    {subrange} subrange |
+    {integer} signed_integer;
     //enumerated_value;
 
   // B.3.2.4 Iteration statements
 
   iteration_statement =
-    for_statement |
-    while_statement |
-    repeat_statement |
-    exit_statement;
+    {for} for_statement |
+    {while} while_statement |
+    {repeat} repeat_statement |
+    {exit} exit_statement;
 
   for_statement =
     for_token control_variable colon_eq for_list do_token statement_list end_for_token;
